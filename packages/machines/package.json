@@ -1,0 +1,16 @@
+{
+  "name": "@elestrals-showdown/machines",
+  "private": true,
+  "scripts": {
+    "dev": "xstate typegen \"src/**/*.machine.ts\" --watch"
+  },
+  "dependencies": {
+    "@elestrals-showdown/types": "workspace:*",
+    "xstate": "^4.33.6"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.3",
+    "@xstate/cli": "^0.3.3",
+    "prettier": "^2.7.1"
+  }
+}

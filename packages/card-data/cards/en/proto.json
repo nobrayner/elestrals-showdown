@@ -1,0 +1,252 @@
+[
+  {
+    "id": "zaptor",
+    "name": "Zaptor",
+    "images": {
+      "default": ""
+    },
+    "class": "spirit",
+    "subclasses": ["archaic"],
+    "element": "thunder"
+  },
+  {
+    "id": "vipyro",
+    "name": "Vipyro",
+    "images": {
+      "default": ""
+    },
+    "class": "spirit",
+    "subclasses": [],
+    "element": "fire"
+  },
+  {
+    "id": "leviaphin",
+    "name": "Leviaphin",
+    "images": {
+      "default": ""
+    },
+    "class": "spirit",
+    "subclasses": ["oceanic", "ethereal"],
+    "element": "water"
+  },
+  {
+    "id": "lycarus",
+    "name": "Lycarus",
+    "images": {
+      "default": ""
+    },
+    "class": "spirit",
+    "subclasses": ["brute", "ethereal"],
+    "element": "wind"
+  },
+  {
+    "id": "teratlas",
+    "name": "Teratlas",
+    "images": {
+      "default": ""
+    },
+    "class": "spirit",
+    "subclasses": ["golem", "insectoid"],
+    "element": "earth"
+  },
+  {
+    "id": "aeolus",
+    "name": "Aeolus",
+    "images": {
+      "default": ""
+    },
+    "class": "rune",
+    "subclasses": ["divine"],
+    "cost": ["air"],
+    "effect": {
+      "text": "When this Aeolus is Enchanted you can Enchant an additional 3 Air. You can disenchant 1 Air from this Aeolus to Search your Deck for a 1 Spirit Air Elestral and add it to your Hand."
+    }
+  },
+  {
+    "id": "aeromare",
+    "name": "Aeromare",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["ethereal"],
+    "cost": ["air"],
+    "attack": 4,
+    "defense": 5,
+    "effect": {
+      "text": "When this Aeromare is used to Ascend to Glydesdale, Empower this Card as an Artifact to Glydesdale with the Effect \"Empowered Elestral cannot be Targeted or Destroyed by Opponent's Runes\""
+    }
+  },
+  {
+    "id": "ambrosia",
+    "name": "Ambrosia",
+    "images": {
+      "default": ""
+    },
+    "class": "rune",
+    "subclasses": ["invoke"],
+    "cost": ["rainbow"],
+    "effect": {
+      "text": "Add up to 3 Spirits from your Underworld to your Spirit Deck."
+    }
+  },
+  {
+    "id": "ampup",
+    "name": "Ampup",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["brute"],
+    "cost": ["thunder"],
+    "attack": 3,
+    "defence": 3,
+    "effect": {
+      "text": "You can Discard this Ampup from your Hand to your Underworld and Expend 1 Thunder to Search your Deck for up to 2 Ampup and add them to your Hand."
+    }
+  },
+  {
+    "id": "apheros",
+    "name": "Apheros",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["aquatic", "ethereal"],
+    "cost": ["water"],
+    "attack": 2,
+    "defence": 4,
+    "effect": {
+      "text": "You can Nexus up to 2 Water on your Field. If you successfully Nexus from this Effect you can Draw 2 Cards."
+    }
+  },
+  {
+    "id": "astrabbit",
+    "name": "Astrabbit",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["ethereal"],
+    "cost": ["thunder"],
+    "attack": 2,
+    "defence": 4,
+    "effect": {
+      "text": "Every time this Astrabbit receives Thunder you can Look at the top 3 Cards of your Deck and add 1 Card to your Hand. Place the other 2 Cards back and Shuffle."
+    }
+  },
+  {
+    "id": "atlantis",
+    "name": "Atlantis",
+    "images": {
+      "default": ""
+    },
+    "class": "rune",
+    "subclasses": ["stadium"],
+    "cost": ["water"],
+    "effect": {
+      "text": "All Elestrals on the Field gain 1 Attack and 1 Defense for each of their Enchanted Water."
+    }
+  },
+  {
+    "id": "bagofwinds",
+    "name": "Bag of Winds",
+    "images": {
+      "default": ""
+    },
+    "class": "rune",
+    "subclasses": ["artifact"],
+    "cost": ["wind", "wind"],
+    "effect": {
+      "text": "The Empowered Elestral gains 2 Defense and cannot be Targeted by Runes. If Aeolus is Enchanted and the Empowered Elestral Destroys an Elestral in Battle you can Target and Destroy 1 Rune on the Field."
+    }
+  },
+  {
+    "id": "blazerus",
+    "name": "Blazerus",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["eldritch", "behemoth"],
+    "cost": ["fire", "fire"],
+    "attack": 8,
+    "defence": 2,
+    "effect": {
+      "text": "This Blazerus can Attack twice. If this Blazerus Destroys 2 Elestrals in the same Battle Phase you can Special Ascend this Blazerus to Trifernal from your Hand or Deck during the End Phase."
+    }
+  },
+  {
+    "id": "boombatt",
+    "name": "Boombatt",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["eldritch"],
+    "cost": ["thunder"],
+    "attack": 2,
+    "defence": 1,
+    "effect": {
+      "text": "You can Disenchant 1 Thunder from this Boombatt to Target and Destroy an Opponent's Enchanted Elestral."
+    }
+  },
+  {
+    "id": "capregal",
+    "name": "Capregal",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["oceanic", "ethereal"],
+    "cost": ["water", "water"],
+    "attack": 8,
+    "defence": 5,
+    "effect": {
+      "text": "When this Capregal Destroys an Opponent's Elestral in Battle you can Special Enchant a Foamee from your Underworld in Attack Position."
+    }
+  },
+  {
+    "id": "carryon",
+    "name": "Carryon",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["insectoid", "eldritch"],
+    "cost": ["wind"],
+    "attack": 3,
+    "defence": 3,
+    "effect": {
+      "text": "When this Carryon is Destroyed in Battle, Target the Elestral that Destroyed it and take Control of it until the End Phase."
+    }
+  },
+  {
+    "id": "centaurbor",
+    "name": "Centaurbor",
+    "images": {
+      "default": ""
+    },
+    "class": "elestral",
+    "subclasses": ["dryad", "behemoth"],
+    "cost": ["earth", "earth", "earth"],
+    "attack": 11,
+    "defence": 15,
+    "effect": {
+      "text": "You can Disenchant 1 Earth from Centaurbor to Target and Destroy 1 Card on the Field. If Foloi Forest is Enchanted this Centaurbor cannot be Targeted by Invoke Runes"
+    }
+  },
+  {
+    "id": "circlethesky",
+    "name": "Circle the Sky",
+    "images": {
+      "default": ""
+    },
+    "class": "rune",
+    "subclasses": ["invoke"],
+    "cost": ["rainbow"],
+    "effect": {
+      "text": "You can Nexus up to 2 Spirits on your Field. If you successfully Nexus from this Effect you can Draw 1 Card."
+    }
+  }
+]
