@@ -13,15 +13,38 @@ importers:
   packages/card-data:
     specifiers: {}
 
-  packages/machines:
+  packages/logic:
     specifiers:
-      '@elestrals-showdown/types': workspace:*
+      '@elestrals-showdown/card-data': workspace:*
+      '@elestrals-showdown/schemas': workspace:*
       '@types/ws': ^8.5.3
       '@xstate/cli': ^0.3.3
+      neverthrow: ^5.0.0
       prettier: ^2.7.1
       xstate: ^4.33.6
     dependencies:
+      '@elestrals-showdown/card-data': link:../card-data
+      '@elestrals-showdown/schemas': link:../schemas
+      neverthrow: 5.0.0
+      xstate: 4.33.6
+    devDependencies:
+      '@types/ws': 8.5.3
+      '@xstate/cli': 0.3.3_prettier@2.7.1
+      prettier: 2.7.1
+
+  packages/machines:
+    specifiers:
+      '@elestrals-showdown/card-data': workspace:*
+      '@elestrals-showdown/types': workspace:*
+      '@types/ws': ^8.5.3
+      '@xstate/cli': ^0.3.3
+      neverthrow: ^5.0.0
+      prettier: ^2.7.1
+      xstate: ^4.33.6
+    dependencies:
+      '@elestrals-showdown/card-data': link:../card-data
       '@elestrals-showdown/types': link:../types
+      neverthrow: 5.0.0
       xstate: 4.33.6
     devDependencies:
       '@types/ws': 8.5.3
@@ -30,8 +53,8 @@ importers:
 
   services/game-socket:
     specifiers:
-      '@elestrals-showdown/machines': workspace:*
-      '@elestrals-showdown/types': workspace:*
+      '@elestrals-showdown/logic': workspace:*
+      '@elestrals-showdown/schemas': workspace:*
       '@types/node': ^18.7.23
       '@types/ws': ^8.5.3
       neverthrow: ^5.0.0
@@ -41,11 +64,11 @@ importers:
       typescript: ^4.8.4
       ws: ^8.9.0
     dependencies:
-      '@elestrals-showdown/machines': link:../../packages/machines
+      '@elestrals-showdown/logic': link:../../packages/logic
+      '@elestrals-showdown/schemas': link:../../packages/schemas
       neverthrow: 5.0.0
       ws: 8.9.0
     devDependencies:
-      '@elestrals-showdown/types': link:../../packages/types
       '@types/node': 18.7.23
       '@types/ws': 8.5.3
       nodemon: 2.0.20

@@ -1,5 +1,3 @@
-export type PlayerKey = 'player1' | 'player2'
-
 export type SendEventFunction<T extends { type: string; data: any }> = (data: T) => void
 
 export type Element =
@@ -75,5 +73,19 @@ export type Card = SpiritCard | ElestralCard | RuneCard
 
 // This needs to be inferred from a zod schema, so we can validate
 export type DeckList = {
-  [cardId: string]: 1 | 2 | 3
+  main: {
+    [cardId: string]: 1 | 2 | 3
+  }
+  spirit: {
+    [cardId: string]: number
+  }
+  sideboard: {
+    [cardId: string]: number
+  }
 }
+
+export type Deck = Readonly<{
+  main: Card[]
+  spirit: Card[]
+  sideboard: Card[]
+}>

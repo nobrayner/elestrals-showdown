@@ -1,11 +1,13 @@
 {
-  "name": "@elestrals-showdown/machines",
+  "name": "@elestrals-showdown/logic",
   "private": true,
   "scripts": {
     "dev": "xstate typegen \"src/**/*.machine.ts\" --watch"
   },
   "dependencies": {
-    "@elestrals-showdown/types": "workspace:*",
+    "@elestrals-showdown/card-data": "workspace:*",
+    "@elestrals-showdown/schemas": "workspace:*",
+    "neverthrow": "^5.0.0",
     "xstate": "^4.33.6"
   },
   "devDependencies": {
