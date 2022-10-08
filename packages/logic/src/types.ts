@@ -1,18 +1,17 @@
 import type {
   Card,
-  Deck,
   ElestralCard,
+  ElestralOrRuneCard,
   RuneCard,
-} from '@elestrals-showdown/types'
-
-export type DiceRollResult = {
-  roll: number
-}
+  SpiritCard,
+} from '@elestrals-showdown/schemas'
 
 type ElestralSlot = ElestralCard | null
 type RuneSlot = RuneCard | null
 
-type PlayerField = {
+export type PlayerId = string & { __type: 'playerid' }
+
+export type PlayerField = {
   elestrals: [ElestralSlot, ElestralSlot, ElestralSlot, ElestralSlot]
   runes: [RuneSlot, RuneSlot, RuneSlot, RuneSlot]
   stadium: RuneSlot
@@ -20,18 +19,33 @@ type PlayerField = {
 }
 
 export type PlayerState = {
-  deck: Deck
-  hand: Card[]
+  mainDeck: ElestralOrRuneCard[]
+  spiritDeck: SpiritCard[]
+  hand: ElestralOrRuneCard[]
   field: PlayerField
-}
+} & (
+    | {
+      status: 'preparing' | 'ready'
+    }
+    | {
+      status: 'out'
+      outReason: 'deck out' | 'spirit out'
+    }
+  )
 
 export type PlayerStateSyncPayload = {
-  deck: Pick<Deck, 'main' | 'spirit'>
-  hand: Card[]
+  mainDeckCount: number
+  spiritDeck: SpiritCard[]
+  hand: ElestralOrRuneCard[]
   field: PlayerField
-  opponent: {
-    field: PlayerField
-    handCount: number
-    spiritCount: number
-  }
+  opponents: Record<
+    PlayerId,
+    {
+      field: PlayerField
+      handCount: number
+      spiritCount: number
+    }
+  >
 }
+
+export type GameState = Map<PlayerId, PlayerState>

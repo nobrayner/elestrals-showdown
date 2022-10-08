@@ -1,75 +1,73 @@
 import type {
   SendEventFunction as SendEventFunctionBase,
   Deck,
-  Card,
-} from '@elestrals-showdown/types'
+} from '@elestrals-showdown/schemas'
 
-import type {
-  DiceRollResult,
-  PlayerStateSyncPayload,
-  PlayerState,
-} from './types'
+import type { PlayerId, PlayerStateSyncPayload, GameState } from './types'
 
 import type { ActorRefFrom, InterpreterFrom } from 'xstate'
 
 import { assign, createMachine, interpret } from 'xstate'
 
 import { rollDice } from './dice-utils'
-import { shuffleCards } from './deck-utils'
+import { initGameState } from './game-state-utils'
+import { shuffleHandIntoDeck, expendSpirits, drawCards } from './card-effects'
+
+const INITIAL_HAND_SIZE = 5
+
+type SendEventFunction = SendEventFunctionBase<SentPlayerEvent>
 
 export type PlayerData = {
-  id: string
+  id: PlayerId
   send: SendEventFunction
   deck: Deck
 }
 
-type SentPlayerEvents =
+type SentPlayerEvent =
   | {
     type: 'DICE_ROLL_RESULT'
-    data: Pick<GameServerServices['rollDice']['data'], 'player1' | 'player2'>
+    data: Pick<GameServerServices['rollDice']['data'], 'results'>
   }
   | { type: 'CHOOSE_STARTING_PLAYER'; data: undefined }
   | { type: 'SYNC_STATE'; data: PlayerStateSyncPayload }
-
-type SendEventFunction = SendEventFunctionBase<SentPlayerEvents>
+  | { type: 'GAME_ROUND_OVER'; data: { winner: PlayerId } }
 
 type GameServerEvent =
   | {
-    type: 'PLAYER_2_CONNECTED'
+    type: 'PLAYER_CONNECTED'
     playerData: PlayerData
   }
   // Events that come from a player
   | {
     type: 'STARTING_PLAYER_PICKED'
-    from: string
-    startingPlayer: 'me' | 'them'
+    from: PlayerId
+    startingPlayer: PlayerId
+  }
+  | {
+    type: 'MULLIGAN'
+    from: PlayerId
+    spiritDeckIndicesToExpend: [number, number]
+  }
+  | {
+    type: 'NO_MULLIGAN'
+    from: PlayerId
   }
 
 type GameServerContext = {
-  currentPlayer: string
-  player1: PlayerState & {
-    id: string
-    send: SendEventFunction
-  }
-  player2: PlayerState & {
-    id: string
-    send: SendEventFunction
-  }
+  currentPlayerId: string
+  gameState: GameState
+  players: Map<PlayerId, PlayerData>
 }
 
 type GameServerServices = {
   rollDice: {
     data: {
-      player1: DiceRollResult
-      player2: DiceRollResult
-      winner: 'player1' | 'player2'
+      results: Record<PlayerId, number>
+      winner: PlayerId
     }
   }
-  shufflePlayer1Deck: {
-    data: Card[]
-  }
-  shufflePlayer2Deck: {
-    data: Card[]
+  shufflePlayerDecks: {
+    data: void
   }
 }
 
@@ -85,13 +83,17 @@ export const gameServerMachine = createMachine(
       services: {} as GameServerServices,
     },
     // Actual Machine
-    initial: 'Waiting for Player 2',
+    initial: 'Waiting for Players',
     states: {
-      'Waiting for Player 2': {
+      'Waiting for Players': {
+        always: {
+          target: 'Rolling Dice',
+          cond: 'enough players',
+        },
         on: {
-          PLAYER_2_CONNECTED: {
-            target: 'Rolling Dice',
-            actions: ['assignPlayer2'],
+          PLAYER_CONNECTED: {
+            target: 'Waiting for Players',
+            actions: ['addPlayer'],
           },
         },
       },
@@ -112,219 +114,271 @@ export const gameServerMachine = createMachine(
         on: {
           STARTING_PLAYER_PICKED: {
             target: 'Shuffle and Draw',
-            cond: 'fromCurrentPlayer',
+            cond: 'from current player',
             actions: ['setCurrentPlayerToStartingPlayer'],
           },
         },
       },
       'Shuffle and Draw': {
-        type: 'parallel',
-        onDone: {
-          target: 'Game Started',
+        entry: ['initGameState'],
+        always: {
+          target: 'Check for Mulligans',
         },
+      },
+      'Check for Mulligans': {
+        entry: ['syncPlayerState'],
+        always: [
+          {
+            target: 'Game Round Over',
+            cond: 'only one player left',
+          },
+          {
+            target: '#Elestrals TCG (Server).Game Round.Main Phase',
+            cond: 'all players ready',
+          },
+        ],
+        on: {
+          MULLIGAN: [
+            {
+              cond: 'has two or more spirits',
+              actions: ['mulligan', 'syncPlayerState'],
+            },
+            {
+              actions: ['markPlayerAsSpiritOut'],
+            },
+          ],
+          NO_MULLIGAN: {
+            actions: ['markPlayerAsReady'],
+          },
+        },
+      },
+      'Game Round': {
+        initial: 'Draw Phase',
         states: {
-          'Player 1': {
-            initial: 'Shuffle',
+          'Draw Phase': {},
+          'Main Phase': {
+            type: 'parallel',
             states: {
-              Shuffle: {
-                invoke: {
-                  src: 'shufflePlayer1Deck',
-                  onDone: {
-                    target: 'Ready',
-                    actions: ['setInitialPlayer1State'],
+              'Normal Enchant': {
+                initial: 'Can Normal Enchant',
+                states: {
+                  'Can Normal Enchant': {
+                    on: {
+                      // NORMAL_ENCHANT_ELESTRAL: {
+                      //   target: 'Cannot Normal Enchant',
+                      // },
+                      // REENCHANT_ELESTRAL: {
+                      //   target: 'Cannot Normal Enchant',
+                      // },
+                      // EXPEND_TO_DRAW: {
+                      //   target: 'Cannot Normal Enchant',
+                      // },
+                      // ASCEND_ELESTRAL: {
+                      //   target: 'Cannot Normal Enchant',
+                      // },
+                    },
+                  },
+                  'Cannot Normal Enchant': {},
+                },
+              },
+              Actions: {
+                initial: 'Idle',
+                states: {
+                  Idle: {
+                    description:
+                      'Addd some random text to make this node as big as possible so there is more room for transitions!',
+                    on: {
+                      // PLAY_FACEDOWN_RUNE: {},
+                      // ENCHANT_RUNE: {},
+                      // USE_CARD_ABILITY: {},
+                      // CHANGE_ELESTRAL_POSITION: {},
+                    },
                   },
                 },
               },
-              Ready: {
-                type: 'final',
-              },
+            },
+            on: {
+              // END_TURN: {
+              //   target: 'End Phase',
+              // },
+              // ATTACK: {
+              //   cond: 'attack position elestral on current player field',
+              //   target: 'Battle Phase',
+              // },
             },
           },
-          'Player 2': {
-            initial: 'Shuffle',
-            states: {
-              Shuffle: {
-                invoke: {
-                  src: 'shufflePlayer2Deck',
-                  onDone: {
-                    target: 'Ready',
-                    actions: ['setInitialPlayer2State'],
-                  },
-                },
-              },
-              Ready: {
-                type: 'final',
-              },
-            },
-          },
+          'Battle Phase': {},
+          'End Phase': {},
         },
       },
-      'Game Started': {
-        entry: ['syncPlayer1State', 'syncPlayer2State'],
-      },
-      'Game Over': {
-        type: 'final',
+      'Game Round Over': {
+        entry: ['sendGameRoundOver'],
       },
     },
   },
   {
     actions: {
-      assignPlayer2: assign((c, e) => {
+      addPlayer: assign((c, e) => {
+        const players = c.players
+
+        players.set(e.playerData.id, e.playerData)
+
         return {
-          player2: {
-            ...c.player2,
-            ...e.playerData,
-            field: {
-              elestrals: [null, null, null, null] as any,
-              runes: [null, null, null, null] as any,
-              stadium: null,
-              underworld: [] as any,
-            },
-            hand: [] as any,
-          },
+          players,
         }
       }),
       setCurrentPlayerToDiceRollWinner: assign((_, e) => {
         return {
-          currentPlayer: e.data.winner,
+          currentPlayerId: e.data.winner,
         }
       }),
-      setCurrentPlayerToStartingPlayer: assign((c, e) => {
-        const me = e.from
-        const them = c.player1.id === e.from ? c.player2.id : c.player1.id
+      setCurrentPlayerToStartingPlayer: assign((_, e) => {
         return {
-          currentPlayer: e.startingPlayer === 'me' ? me : them,
+          currentPlayerId: e.startingPlayer,
         }
       }),
       sendPlayerDiceRollResults: (c, e) => {
-        sendToPlayers(c, {
+        sendToAllPlayers(c, {
           type: 'DICE_ROLL_RESULT',
           data: {
-            player1: e.data.player1,
-            player2: e.data.player2,
+            results: e.data.results,
           },
         })
       },
       sendChooseStartingPlayerEvent: (c, e) => {
-        c[e.data.winner].send({
+        sendToPlayer(c, e.data.winner, {
           type: 'CHOOSE_STARTING_PLAYER',
           data: undefined,
         })
       },
-      syncPlayer1State: (c) => {
-        const player = c.player1
-        const opponent = c.player2
-
-        player.send({
-          type: 'SYNC_STATE',
-          data: {
-            deck: {
-              main: player.deck.main,
-              spirit: player.deck.spirit,
-            },
-            hand: player.hand,
-            field: player.field,
-            opponent: {
-              field: opponent.field,
-              handCount: opponent.hand.length,
-              spiritCount: opponent.deck.spirit.length,
-            },
-          },
-        })
-      },
-      syncPlayer2State: (c) => {
-        const player = c.player2
-        const opponent = c.player1
-
-        player.send({
-          type: 'SYNC_STATE',
-          data: {
-            deck: {
-              main: player.deck.main,
-              spirit: player.deck.spirit,
-            },
-            hand: player.hand,
-            field: player.field,
-            opponent: {
-              field: opponent.field,
-              handCount: opponent.hand.length,
-              spiritCount: opponent.deck.spirit.length,
-            },
-          },
-        })
-      },
-      // player1DrawCard: assign((c) => {
-      //   const card = c.player1.deck.main.shift()!
-
-      //   return {
-      //     player1: {
-      //       ...c.player1,
-      //       hand: c.player1.hand.concat(card),
-      //     },
-      //   }
-      // }),
-      // player2DrawCard: assign((c) => {
-      //   const card = c.player2.deck.main.shift()!
-
-      //   return {
-      //     player2: {
-      //       ...c.player2,
-      //       hand: c.player2.hand.concat(card),
-      //     },
-      //   }
-      // }),
-      : assign((c, e) => {
+      initGameState: assign((c) => {
         return {
-          player1: {
-            ...c.player1,
-            deck: {
-              ...c.player1.deck,
-              main: e.data,
-            },
-          },
+          gameState: initGameState([...c.players.values()], INITIAL_HAND_SIZE),
         }
       }),
-  updatePlayer2Deck: assign((c, e) => {
-    return {
-      player2: {
-        ...c.player2,
-        deck: {
-          ...c.player2.deck,
-          main: e.data,
-        },
+      markPlayerAsReady: (c, e) => {
+        c.gameState.get(e.from)!.status = 'ready'
       },
-    }
-  }),
-    },
-guards: {
-  fromCurrentPlayer: (c, e) => {
-    return c.currentPlayer === e.from
-  },
-    },
-services: {
-  rollDice: async () => {
-    const p1Roll = rollDice()
-    let p2Roll = rollDice()
+      mulligan: (c, e) => {
+        const player = c.gameState.get(e.from)!
 
-    while (p2Roll === p1Roll) {
-      p2Roll = rollDice()
-    }
+        shuffleHandIntoDeck(player)
+        expendSpirits(player, {
+          spiritDeckIndicesToExpend: e.spiritDeckIndicesToExpend,
+        })
+        drawCards(player, { amount: INITIAL_HAND_SIZE })
+      },
+      markPlayerAsSpiritOut: (c, e) => {
+        c.gameState.set(e.from, {
+          ...c.gameState.get(e.from)!,
+          status: 'out',
+          outReason: 'spirit out',
+        })
+      },
+      syncPlayerState: (c) => {
+        sendToAllPlayers(c, (playerId, gameState) => {
+          const player = gameState.get(playerId)!
 
-    return {
-      player1: {
-        roll: p1Roll,
+          const opponentState: PlayerStateSyncPayload['opponents'] = {}
+
+          for (const [opponentId, opponent] of gameState) {
+            if (opponentId === playerId) {
+              // We don't include ourselves in the opponent list!
+              continue
+            }
+
+            opponentState[opponentId] = {
+              spiritCount: opponent.spiritDeck.length,
+              handCount: opponent.hand.length,
+              field: opponent.field,
+            }
+          }
+
+          return {
+            type: 'SYNC_STATE',
+            data: {
+              mainDeckCount: player.mainDeck.length,
+              spiritDeck: player.spiritDeck,
+              hand: player.hand,
+              field: player.field,
+              opponents: opponentState,
+            },
+          }
+        })
       },
-      player2: {
-        roll: p2Roll,
+      sendGameRoundOver: (c) => {
+        const winner = [...c.gameState.entries()].find(
+          ([_, player]) => player.status !== 'out'
+        )!
+        sendToAllPlayers(c, {
+          type: 'GAME_ROUND_OVER',
+          data: {
+            winner: winner[0],
+          },
+        })
       },
-      winner: p1Roll > p2Roll ? ('player1' as const) : ('player2' as const),
-    }
-  },
-    shufflePlayer1Deck: async (c) => {
-      return shuffleCards(c.player1.deck.main)
     },
-      shufflePlayer2Deck: async (c) => {
-        return shuffleCards(c.player2.deck.main)
+    guards: {
+      'from current player': (c, e) => {
+        return c.currentPlayerId === e.from
+      },
+      'enough players': (c) => {
+        return c.players.size === 2
+      },
+      'has two or more spirits': (c, e) => {
+        return c.gameState.get(e.from)!.spiritDeck.length > 2
+      },
+      'all players ready': (c) => {
+        return [...c.gameState.values()].every(
+          (player) => player.status === 'ready'
+        )
+      },
+      'only one player left': (c) => {
+        return (
+          [...c.gameState.values()].filter((player) => player.status !== 'out')
+            .length === 1
+        )
+      },
+    },
+    services: {
+      rollDice: async (c) => {
+        type Roll = [PlayerId, number]
+        const results: Roll[] = []
+
+        for (const [playerId] of c.players) {
+          results.push([playerId, rollDice()])
+        }
+
+        const highestRoll = (winningRoll: Roll, playerRoll: Roll) => {
+          if (playerRoll[1] > winningRoll[1]) {
+            return playerRoll
+          }
+
+          return winningRoll
+        }
+
+        let topRoll: [PlayerId, number] = results.reduce(highestRoll)
+        let tiedWinnerIndexes = results
+          .filter((roll) => roll[1] === topRoll[1])
+          .map((_, i) => i)
+
+        while (tiedWinnerIndexes.length > 1) {
+          for (const index of tiedWinnerIndexes) {
+            results[index]![1] = rollDice()
+          }
+
+          topRoll = results
+            .filter((_, i) => tiedWinnerIndexes.includes(i))
+            .reduce(highestRoll)
+          tiedWinnerIndexes = results
+            .filter((roll) => roll[1] === topRoll[1])
+            .map((_, i) => i)
+        }
+
+        return {
+          results: Object.fromEntries(results),
+          winner: topRoll[0],
+        }
       },
     },
   }
@@ -333,29 +387,40 @@ services: {
 export type GameServerActor = ActorRefFrom<typeof gameServerMachine>
 export type GameServerService = InterpreterFrom<typeof gameServerMachine>
 
-function sendToPlayers(context: GameServerContext, event: SentPlayerEvents) {
-  context.player1.send(event)
-  context.player2.send(event)
+function sendToAllPlayers(
+  context: GameServerContext,
+  eventOrBuilder:
+    | SentPlayerEvent
+    | ((playerId: PlayerId, gameState: GameState) => SentPlayerEvent)
+) {
+  context.players.forEach((player) => {
+    const event =
+      typeof eventOrBuilder === 'function'
+        ? eventOrBuilder(player.id, context.gameState)
+        : eventOrBuilder
+
+    player.send(event)
+  })
 }
 
-export function newGameServerMachine({ id, send, deck }: PlayerData) {
+function sendToPlayer(
+  context: GameServerContext,
+  player: PlayerId,
+  event: SentPlayerEvent
+) {
+  context.players.get(player)!.send(event)
+}
+
+export function newGameServerMachine(playerData: PlayerData) {
+  const players = new Map()
+  players.set(playerData.id, playerData)
+
   return interpret(
     gameServerMachine.withContext({
-      currentPlayer: '' as any,
-      player1: {
-        id,
-        send,
-        deck,
-        field: {
-          elestrals: [null, null, null, null],
-          runes: [null, null, null, null],
-          stadium: null,
-          underworld: [],
-        },
-        hand: [],
-      },
-      // We don't actually have player2 until they connect, so just dummy this one
-      player2: {} as any,
+      currentPlayerId: '' as any,
+      players,
+      // Will be properly set once the game starts
+      gameState: {} as GameState,
     })
   ).start()
 }

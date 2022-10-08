@@ -30,27 +30,27 @@ export type RuneSubclass =
   | 'stadium'
 
 
-export type Class = {
+export type CardSubclasses = {
   'spirit': ElestralSubclass
   'elestral': ElestralSubclass
   'rune': RuneSubclass
 }
 export type CardClass = {
-  [K in keyof Class]: K
-}[keyof Class]
+  [K in keyof CardSubclasses]: K
+}[keyof CardSubclasses]
 
 export type CardEffect = {
   text: string
 }
 
-type CardBase<T extends keyof Class> = {
+type CardBase<T extends keyof CardSubclasses> = {
   id: string
   name: string
   images: {
     default: string
   }
   class: T
-  subclasses: Class[T]
+  subclasses: CardSubclasses[T]
 }
 
 export type SpiritCard = CardBase<'spirit'> & {
@@ -69,6 +69,7 @@ export type RuneCard = CardBase<'rune'> & {
   effect: CardEffect
 }
 
+export type ElestralOrRuneCard = ElestralCard | RuneCard
 export type Card = SpiritCard | ElestralCard | RuneCard
 
 // This needs to be inferred from a zod schema, so we can validate
@@ -84,8 +85,8 @@ export type DeckList = {
   }
 }
 
-export type Deck = Readonly<{
-  main: Card[]
-  spirit: Card[]
+export type Deck = {
+  main: ElestralOrRuneCard[]
+  spirit: SpiritCard[]
   sideboard: Card[]
-}>
+}

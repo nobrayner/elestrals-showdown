@@ -1,24 +1,18 @@
-// import type { SendEventFunction } from './types'
-import type {
-  GameServerService,
-  PlayerData,
-} from '@elestrals-showdown/machines'
-// import type { Deck } from '@elestrals-showdown/types'
+import type { GameServerService, PlayerData } from '@elestrals-showdown/logic'
 
 import { Result, ok, err } from 'neverthrow'
 
-import { newGameServerMachine } from '@elestrals-showdown/machines'
+import { newGameServerMachine } from '@elestrals-showdown/logic'
 
 const GAMES: Map<string, GameServerService> = new Map()
 
 type StartGameError = 'GAME_IS_FULL'
 export function startGameOrConnect(
   roomId: string,
-  playerData: Pick<PlayerData, 'send' | 'deck'>
-): Result<[GameServerService, 'player1' | 'player2'], StartGameError> {
+  playerData: PlayerData
+): Result<GameServerService, StartGameError> {
   if (!GAMES.has(roomId)) {
-    const playerKey = 'player1'
-    const gameMachine = newGameServerMachine({ ...playerData, id: playerKey })
+    const gameMachine = newGameServerMachine(playerData)
     gameMachine.subscribe((state) => {
       console.log(`[${roomId}]`, state.value)
       console.log(`[${roomId}]`, state.context)
@@ -30,18 +24,17 @@ export function startGameOrConnect(
 
     GAMES.set(roomId, gameMachine)
 
-    return ok([gameMachine, playerKey])
+    return ok(gameMachine)
   }
 
-  const playerKey = 'player2'
   const gameMachine = GAMES.get(roomId)
 
-  if (gameMachine?.getSnapshot()?.matches('Waiting for Player 2')) {
+  if (gameMachine?.getSnapshot()?.matches('Waiting for Players')) {
     gameMachine.send({
-      type: 'PLAYER_2_CONNECTED',
-      playerData: { ...playerData, id: playerKey },
+      type: 'PLAYER_CONNECTED',
+      playerData,
     })
-    return ok([gameMachine, playerKey])
+    return ok(gameMachine)
   }
 
   return err('GAME_IS_FULL')

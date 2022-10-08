@@ -1,5 +1,5 @@
 import type { WebSocket as WebSocketBase } from 'ws'
-import type { SendEventFunction as SendEventFunctionBase } from '@elestrals-showdown/types'
+import type { SendEventFunction as SendEventFunctionBase } from '@elestrals-showdown/schemas'
 
 export type WebSocket = WebSocketBase & {
   meta: {
@@ -7,4 +7,7 @@ export type WebSocket = WebSocketBase & {
   }
 }
 
-export type SendEventFunction = SendEventFunctionBase<{ type: string; data: any}>
+export type SendEventFunction = SendEventFunctionBase<{
+  type: string
+  data: any
+}>

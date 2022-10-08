@@ -57,9 +57,9 @@
     },
     "class": "rune",
     "subclasses": ["divine"],
-    "cost": ["air"],
+    "cost": ["wind"],
     "effect": {
-      "text": "When this Aeolus is Enchanted you can Enchant an additional 3 Air. You can disenchant 1 Air from this Aeolus to Search your Deck for a 1 Spirit Air Elestral and add it to your Hand."
+      "text": "When this Aeolus is Enchanted you can Enchant an additional 3 Wind. You can disenchant 2 Wind from this Aeolus to Search your Deck for a 1 Spirit Wind Elestral and add it to your Hand."
     }
   },
   {
@@ -70,7 +70,7 @@
     },
     "class": "elestral",
     "subclasses": ["ethereal"],
-    "cost": ["air"],
+    "cost": ["wind"],
     "attack": 4,
     "defense": 5,
     "effect": {

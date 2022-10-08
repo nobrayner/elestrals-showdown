@@ -1,9 +1,10 @@
 import type { SendEventFunction, WebSocket } from './types'
-import type { DeckList } from '@elestrals-showdown/types'
+import type { DeckList } from '@elestrals-showdown/schemas'
+import type { PlayerId } from '@elestrals-showdown/logic'
 
 import { WebSocketServer } from 'ws'
 
-import { deckFromDeckList } from '@elestrals-showdown/machines'
+import { deckFromDeckList } from '@elestrals-showdown/logic'
 
 import { startGameOrConnect } from './games-cache'
 
@@ -17,8 +18,14 @@ wss.on('connection', (ws: WebSocket, req) => {
   const url = new URL(`${req.url ?? '/'}`, `https://${req.headers.host}`)
   const urlParams = url.searchParams
 
+  const playerId = urlParams.get('playerId')
   const roomId = urlParams.get('roomId')
   const deckList = urlParams.get('deckList')
+  if (!playerId) {
+    console.error('Player ID must be provided')
+    ws.close(4400, 'Player ID must be provided')
+    return
+  }
   if (!roomId) {
     console.error('Room ID must be provided')
     ws.close(4400, 'Room ID must be provided')
@@ -53,6 +60,7 @@ wss.on('connection', (ws: WebSocket, req) => {
   }
 
   let gameRes = startGameOrConnect(roomId, {
+    id: playerId as PlayerId,
     send,
     deck: deckRes.value,
   })
@@ -63,7 +71,7 @@ wss.on('connection', (ws: WebSocket, req) => {
     return
   }
 
-  const [gameMachine, playerKey] = gameRes.value
+  const gameMachine = gameRes.value
 
   gameMachine.onStop(() => {
     ws.close(4000, 'Game Over')
@@ -71,8 +79,8 @@ wss.on('connection', (ws: WebSocket, req) => {
 
   ws.on('message', (data) => {
     const payload = JSON.parse(data.toString())
-    console.log(`[${roomId} (${playerKey})]`, payload)
-    gameMachine.send(Object.assign(payload, { from: playerKey }))
+    console.log(`[${roomId} (${playerId})]`, payload)
+    gameMachine.send(Object.assign(payload, { from: playerId }))
   })
 })
 
