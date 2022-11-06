@@ -53,8 +53,6 @@ wss.on('connection', (ws: WebSocket, req) => {
     return
   }
 
-  console.info(`[${roomId}]`, 'New connection')
-
   const send: SendEventFunction = (data) => {
     ws.send(JSON.stringify(data))
   }
@@ -74,13 +72,24 @@ wss.on('connection', (ws: WebSocket, req) => {
   const gameMachine = gameRes.value
 
   gameMachine.onStop(() => {
+    console.log(`[${roomId}] Game completed`)
     ws.close(4000, 'Game Over')
   })
+
+  console.info(`[${roomId} (${playerId})] Connected`)
 
   ws.on('message', (data) => {
     const payload = JSON.parse(data.toString())
     console.log(`[${roomId} (${playerId})]`, payload)
     gameMachine.send(Object.assign(payload, { from: playerId }))
+  })
+
+  ws.on('close', () => {
+    console.log(`[${roomId} (${playerId})] Disconnected`)
+    gameMachine.send({
+      type: 'PLAYER_DISCONNECTED',
+      playerId: playerId,
+    } as any)
   })
 })
 

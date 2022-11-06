@@ -23,21 +23,24 @@ export type PlayerData = {
   deck: Deck
 }
 
-type SentPlayerEvent =
+type PlayerDataWithStatus = PlayerData & {
+  status: 'connecting' | 'connected' | 'disconnected'
+}
+
+export type SentPlayerEvent =
+  | { type: 'PLAYER_CONNECTED'; data: { players: PlayerId[] } }
+  | { type: 'ENOUGH_PLAYERS'; data: undefined }
   | {
     type: 'DICE_ROLL_RESULT'
     data: Pick<GameServerServices['rollDice']['data'], 'results'>
   }
   | { type: 'CHOOSE_STARTING_PLAYER'; data: undefined }
+  | { type: 'GAME_ROUND_START'; data: undefined }
   | { type: 'SYNC_STATE'; data: PlayerStateSyncPayload }
   | { type: 'GAME_ROUND_OVER'; data: { winner: PlayerId } }
 
-type GameServerEvent =
-  | {
-    type: 'PLAYER_CONNECTED'
-    playerData: PlayerData
-  }
-  // Events that come from a player
+export type RecievedPlayerEvent =
+  | { type: 'PLAYER_CONNECTED'; from: PlayerId }
   | {
     type: 'STARTING_PLAYER_PICKED'
     from: PlayerId
@@ -52,11 +55,24 @@ type GameServerEvent =
     type: 'NO_MULLIGAN'
     from: PlayerId
   }
+  | {
+    type: 'NORMAL_ENCHANT_ELESTRAL'
+    from: PlayerId
+    cardIndex: number
+    spiritCardIndex: number
+    elestralFieldIndex: number
+    position: 'attack' | 'defence'
+  }
+
+type GameServerEvent =
+  | { type: 'PLAYER_CONNECTING'; playerData: PlayerData }
+  | { type: 'PLAYER_DISCONNECTED'; playerId: PlayerId }
+  | RecievedPlayerEvent
 
 type GameServerContext = {
   currentPlayerId: string
   gameState: GameState
-  players: Map<PlayerId, PlayerData>
+  players: Map<PlayerId, PlayerDataWithStatus>
 }
 
 type GameServerServices = {
@@ -83,17 +99,34 @@ export const gameServerMachine = createMachine(
       services: {} as GameServerServices,
     },
     // Actual Machine
+    on: {
+      PLAYER_DISCONNECTED: [
+        {
+          target: 'Game Round Over',
+          cond: 'is connected player',
+          actions: ['removePlayer'],
+        },
+        {
+          actions: ['removePlayer'],
+        },
+      ],
+    },
     initial: 'Waiting for Players',
     states: {
       'Waiting for Players': {
         always: {
           target: 'Rolling Dice',
-          cond: 'enough players',
+          cond: 'enough connected players',
+          actions: ['sendEnoughPlayersEvent'],
         },
         on: {
-          PLAYER_CONNECTED: {
+          PLAYER_CONNECTING: {
             target: 'Waiting for Players',
             actions: ['addPlayer'],
+          },
+          PLAYER_CONNECTED: {
+            target: 'Waiting for Players',
+            actions: ['markPlayerAsConnected', 'sendConnectedPlayersList'],
           },
         },
       },
@@ -135,6 +168,7 @@ export const gameServerMachine = createMachine(
           {
             target: '#Elestrals TCG (Server).Game Round.Main Phase',
             cond: 'all players ready',
+            actions: ['sendGameRoundStartEvent'],
           },
         ],
         on: {
@@ -164,9 +198,10 @@ export const gameServerMachine = createMachine(
                 states: {
                   'Can Normal Enchant': {
                     on: {
-                      // NORMAL_ENCHANT_ELESTRAL: {
-                      //   target: 'Cannot Normal Enchant',
-                      // },
+                      NORMAL_ENCHANT_ELESTRAL: {
+                        target: 'Normal Enchanting Elestral',
+                        cond: 'from current player and is elestral',
+                      },
                       // REENCHANT_ELESTRAL: {
                       //   target: 'Cannot Normal Enchant',
                       // },
@@ -178,7 +213,20 @@ export const gameServerMachine = createMachine(
                       // },
                     },
                   },
-                  'Cannot Normal Enchant': {},
+                  'Normal Enchanting Elestral': {
+                    invoke: {
+                      src: 'normalEnchantElestral',
+                      onDone: {
+                        target: 'Cannot Normal Enchant',
+                      },
+                      onError: {
+                        target: 'Can Normal Enchant',
+                      },
+                    },
+                  },
+                  'Cannot Normal Enchant': {
+                    entry: ['syncPlayerState'],
+                  },
                 },
               },
               Actions: {
@@ -212,7 +260,8 @@ export const gameServerMachine = createMachine(
         },
       },
       'Game Round Over': {
-        entry: ['sendGameRoundOver'],
+        entry: ['sendGameRoundOverEvent'],
+        type: 'final',
       },
     },
   },
@@ -221,12 +270,52 @@ export const gameServerMachine = createMachine(
       addPlayer: assign((c, e) => {
         const players = c.players
 
-        players.set(e.playerData.id, e.playerData)
+        players.set(e.playerData.id, { ...e.playerData, status: 'connecting' })
 
         return {
           players,
         }
       }),
+      removePlayer: assign((c, e) => {
+        const players = c.players
+
+        players.delete(e.playerId)
+
+        return {
+          players,
+        }
+      }),
+      markPlayerAsConnected: assign((c, e) => {
+        const players = c.players
+        const player = players.get(e.from)!
+
+        player.status = 'connected'
+
+        return {
+          players,
+        }
+      }),
+      sendConnectedPlayersList: (c, _e) => {
+        if (c.players.size <= 1) {
+          // Don't notify the first player about themselves connecting
+          return
+        }
+
+        sendToAllPlayers(c, (playerId) => {
+          return {
+            type: 'PLAYER_CONNECTED',
+            data: {
+              players: [...c.players.keys()].filter((id) => id !== playerId),
+            },
+          }
+        })
+      },
+      sendEnoughPlayersEvent: (c) => {
+        sendToAllPlayers(c, {
+          type: 'ENOUGH_PLAYERS',
+          data: undefined,
+        })
+      },
       setCurrentPlayerToDiceRollWinner: assign((_, e) => {
         return {
           currentPlayerId: e.data.winner,
@@ -268,6 +357,12 @@ export const gameServerMachine = createMachine(
         })
         drawCards(player, { amount: INITIAL_HAND_SIZE })
       },
+      sendGameRoundStartEvent: (c) => {
+        sendToAllPlayers(c, {
+          type: 'GAME_ROUND_START',
+          data: undefined,
+        })
+      },
       markPlayerAsSpiritOut: (c, e) => {
         c.gameState.set(e.from, {
           ...c.gameState.get(e.from)!,
@@ -306,10 +401,15 @@ export const gameServerMachine = createMachine(
           }
         })
       },
-      sendGameRoundOver: (c) => {
+      sendGameRoundOverEvent: (c) => {
         const winner = [...c.gameState.entries()].find(
           ([_, player]) => player.status !== 'out'
-        )!
+        )
+
+        if (!winner) {
+          return
+        }
+
         sendToAllPlayers(c, {
           type: 'GAME_ROUND_OVER',
           data: {
@@ -319,11 +419,25 @@ export const gameServerMachine = createMachine(
       },
     },
     guards: {
-      'from current player': (c, e) => {
-        return c.currentPlayerId === e.from
+      'is connected player': (c, e) => {
+        const player = c.players.get(e.playerId)
+
+        return player?.status === 'connected'
       },
-      'enough players': (c) => {
-        return c.players.size === 2
+      'from current player and is elestral': (c, e) => {
+        return fromCurrentPlayer(c, e)
+      },
+      'from current player': (c, e) => {
+        return fromCurrentPlayer(c, e)
+      },
+      'enough connected players': (c) => {
+        const requiredNumberOfPlayers = 2
+
+        return (
+          c.players.size === requiredNumberOfPlayers &&
+          [...c.players.values()].filter((p) => p.status === 'connected')
+            .length === requiredNumberOfPlayers
+        )
       },
       'has two or more spirits': (c, e) => {
         return c.gameState.get(e.from)!.spiritDeck.length > 2
@@ -380,12 +494,48 @@ export const gameServerMachine = createMachine(
           winner: topRoll[0],
         }
       },
+      normalEnchantElestral: async (c, e) => {
+        const player = c.gameState.get(e.from)!
+        const card = player.hand[e.cardIndex]
+
+        if (card === undefined) {
+          throw new Error('Invalid card index for current hand')
+        }
+        if (card.class !== 'elestral') {
+          throw new Error(
+            'Tried to normal enchant a non-Elestral to an Elestral slot'
+          )
+        }
+
+        if (player.field.elestrals[e.elestralFieldIndex] !== null) {
+          throw new Error('Already an elestral in that slot')
+        }
+
+        player.field.elestrals[e.elestralFieldIndex] = {
+          card,
+          position: e.position,
+          spirits: player.spiritDeck.splice(e.spiritCardIndex, 1),
+        }
+      },
     },
   }
 )
 
 export type GameServerActor = ActorRefFrom<typeof gameServerMachine>
 export type GameServerService = InterpreterFrom<typeof gameServerMachine>
+
+//////
+// Guard Helpers (FIXME: Turn into real guards with xstate v5)
+//////
+
+function fromCurrentPlayer(
+  c: GameServerContext,
+  e: RecievedPlayerEvent
+): boolean {
+  return c.currentPlayerId === e.from
+}
+
+// Send Helpers
 
 function sendToAllPlayers(
   context: GameServerContext,
@@ -412,15 +562,15 @@ function sendToPlayer(
 }
 
 export function newGameServerMachine(playerData: PlayerData) {
-  const players = new Map()
-  players.set(playerData.id, playerData)
+  const players = new Map<PlayerId, PlayerDataWithStatus>()
+  players.set(playerData.id, { ...playerData, status: 'connecting' })
 
   return interpret(
     gameServerMachine.withContext({
       currentPlayerId: '' as any,
       players,
       // Will be properly set once the game starts
-      gameState: {} as GameState,
+      gameState: new Map() as GameState,
     })
   ).start()
 }

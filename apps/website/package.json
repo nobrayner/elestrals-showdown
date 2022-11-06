@@ -1,0 +1,34 @@
+{
+  "name": "website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"next dev\" \"pnpm xstate:typegen --watch\"",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "xstate:typegen": "xstate typegen \"**/*.machine.ts\""
+  },
+  "dependencies": {
+    "@elestrals-showdown/logic": "workspace:*",
+    "@xstate/react": "^3.0.1",
+    "cuid": "^2.1.8",
+    "next": "13.0.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "xstate": "^4.33.0"
+  },
+  "devDependencies": {
+    "@elestrals-showdown/schemas": "workspace:*",
+    "@types/node": "^18.7.23",
+    "@types/react": "18.0.25",
+    "@types/react-dom": "18.0.8",
+    "@xstate/cli": "^0.3.3",
+    "concurrently": "^7.5.0",
+    "eslint": "8.26.0",
+    "eslint-config-next": "13.0.2",
+    "prettier": "^2.7.1",
+    "sass": "^1.56.0",
+    "typescript": "^4.8.4"
+  }
+}

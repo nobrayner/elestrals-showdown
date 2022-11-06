@@ -31,7 +31,7 @@ export function startGameOrConnect(
 
   if (gameMachine?.getSnapshot()?.matches('Waiting for Players')) {
     gameMachine.send({
-      type: 'PLAYER_CONNECTED',
+      type: 'PLAYER_CONNECTING',
       playerData,
     })
     return ok(gameMachine)

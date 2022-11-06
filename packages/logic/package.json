@@ -8,7 +8,7 @@
     "@elestrals-showdown/card-data": "workspace:*",
     "@elestrals-showdown/schemas": "workspace:*",
     "neverthrow": "^5.0.0",
-    "xstate": "^4.33.6"
+    "xstate": "^4.33.0"
   },
   "devDependencies": {
     "@types/ws": "^8.5.3",

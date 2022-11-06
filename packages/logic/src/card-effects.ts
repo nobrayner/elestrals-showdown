@@ -27,9 +27,7 @@ export function expendSpirits(
   player: PlayerState,
   { spiritDeckIndicesToExpend }: { spiritDeckIndicesToExpend: number[] }
 ): PlayerState {
-  for (const index of spiritDeckIndicesToExpend) {
-    player.spiritDeck.splice(index, 1)
-  }
+  player.spiritDeck = player.spiritDeck.filter((_, i) => !spiritDeckIndicesToExpend.includes(i))
 
   return player
 }
