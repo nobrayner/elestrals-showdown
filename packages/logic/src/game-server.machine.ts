@@ -3,14 +3,14 @@ import type {
   Deck,
 } from '@elestrals-showdown/schemas'
 
-import type { PlayerId, PlayerStateSyncPayload, GameState } from './types'
+import type { PlayerId, PlayerStateSyncPayload } from './types'
 
 import type { ActorRefFrom, InterpreterFrom } from 'xstate'
 
-import { assign, createMachine, interpret } from 'xstate'
+import { assign, send, createMachine, interpret } from 'xstate'
 
 import { rollDice } from './dice-utils'
-import { initGameState } from './game-state-utils'
+import { GameState, initGameState } from './game-state'
 import { shuffleHandIntoDeck, expendSpirits, drawCards } from './card-effects'
 
 const INITIAL_HAND_SIZE = 5
@@ -37,40 +37,45 @@ export type SentPlayerEvent =
   | { type: 'CHOOSE_STARTING_PLAYER'; data: undefined }
   | { type: 'GAME_ROUND_START'; data: undefined }
   | { type: 'SYNC_STATE'; data: PlayerStateSyncPayload }
+  | { type: 'MAIN_PHASE'; data: undefined }
+  | { type: 'BATTLE_PHASE'; data: undefined }
+  | { type: 'END_PHASE'; data: undefined }
+  | { type: 'NEXT_PLAYER_TURN'; data: { nextActivePlayer: PlayerId } }
   | { type: 'GAME_ROUND_OVER'; data: { winner: PlayerId } }
 
 export type RecievedPlayerEvent =
-  | { type: 'PLAYER_CONNECTED'; from: PlayerId }
+  | { type: 'PLAYER_CONNECTED' }
   | {
     type: 'STARTING_PLAYER_PICKED'
-    from: PlayerId
     startingPlayer: PlayerId
   }
   | {
     type: 'MULLIGAN'
-    from: PlayerId
     spiritDeckIndicesToExpend: [number, number]
   }
   | {
     type: 'NO_MULLIGAN'
-    from: PlayerId
   }
   | {
     type: 'NORMAL_ENCHANT_ELESTRAL'
-    from: PlayerId
     cardIndex: number
     spiritCardIndex: number
     elestralFieldIndex: number
     position: 'attack' | 'defence'
   }
+  | { type: 'END_TURN' }
+
+type RecievedPlayerEventWithFrom = RecievedPlayerEvent & {
+  from: PlayerId
+}
 
 type GameServerEvent =
   | { type: 'PLAYER_CONNECTING'; playerData: PlayerData }
   | { type: 'PLAYER_DISCONNECTED'; playerId: PlayerId }
-  | RecievedPlayerEvent
+  | { type: 'DECK_OUT' }
+  | RecievedPlayerEventWithFrom
 
 type GameServerContext = {
-  currentPlayerId: string
   gameState: GameState
   players: Map<PlayerId, PlayerDataWithStatus>
 }
@@ -90,7 +95,7 @@ type GameServerServices = {
 export const gameServerMachine = createMachine(
   {
     // Configuration
-    id: 'Elestrals TCG (Server)',
+    id: 'Elestrals Game',
     predictableActionArguments: true,
     tsTypes: {} as import('./game-server.machine.typegen').Typegen0,
     schema: {
@@ -147,7 +152,7 @@ export const gameServerMachine = createMachine(
         on: {
           STARTING_PLAYER_PICKED: {
             target: 'Shuffle and Draw',
-            cond: 'from current player',
+            cond: 'from active player',
             actions: ['setCurrentPlayerToStartingPlayer'],
           },
         },
@@ -166,7 +171,7 @@ export const gameServerMachine = createMachine(
             cond: 'only one player left',
           },
           {
-            target: '#Elestrals TCG (Server).Game Round.Main Phase',
+            target: '#Elestrals Game.Game Round.Main Phase',
             cond: 'all players ready',
             actions: ['sendGameRoundStartEvent'],
           },
@@ -187,11 +192,63 @@ export const gameServerMachine = createMachine(
         },
       },
       'Game Round': {
+        onDone: {
+          target: 'Game Round',
+          actions: [
+            'advanceActivePlayer',
+            'syncPlayerState',
+            'sendNextPlayerTurnEvent',
+          ],
+        },
+        on: {
+          DECK_OUT: [
+            {
+              target: 'Game Round Over',
+              cond: 'only one player left',
+              actions: ['syncPlayerState'],
+            },
+            {
+              target: 'Game Round',
+              actions: [
+                'advanceActivePlayer',
+                'syncPlayerState',
+                'sendNextPlayerTurnEvent',
+              ],
+            },
+          ],
+        },
         initial: 'Draw Phase',
         states: {
-          'Draw Phase': {},
+          'Draw Phase': {
+            onDone: {
+              target: 'Main Phase',
+            },
+            initial: 'Deck Count Check',
+            states: {
+              'Deck Count Check': {
+                always: [
+                  {
+                    target: 'Deck Out',
+                    cond: 'no cards remaining for active player',
+                  },
+                  {
+                    target: 'Done',
+                    actions: ['drawCardForActivePlayer'],
+                  },
+                ],
+              },
+              'Deck Out': {
+                entry: ['markPlayerAsDeckOut', 'raiseDeckOutEvent'],
+              },
+              // TODO: draw phase effects/cards/etc.
+              Done: {
+                type: 'final',
+              },
+            },
+          },
           'Main Phase': {
             type: 'parallel',
+            entry: ['syncPlayerState', 'sendMainPhaseEvent'],
             states: {
               'Normal Enchant': {
                 initial: 'Can Normal Enchant',
@@ -199,8 +256,8 @@ export const gameServerMachine = createMachine(
                   'Can Normal Enchant': {
                     on: {
                       NORMAL_ENCHANT_ELESTRAL: {
-                        target: 'Normal Enchanting Elestral',
-                        cond: 'from current player and is elestral',
+                        target: 'Cannot Normal Enchant',
+                        cond: 'can normal enchant elestral',
                       },
                       // REENCHANT_ELESTRAL: {
                       //   target: 'Cannot Normal Enchant',
@@ -213,17 +270,6 @@ export const gameServerMachine = createMachine(
                       // },
                     },
                   },
-                  'Normal Enchanting Elestral': {
-                    invoke: {
-                      src: 'normalEnchantElestral',
-                      onDone: {
-                        target: 'Cannot Normal Enchant',
-                      },
-                      onError: {
-                        target: 'Can Normal Enchant',
-                      },
-                    },
-                  },
                   'Cannot Normal Enchant': {
                     entry: ['syncPlayerState'],
                   },
@@ -233,10 +279,8 @@ export const gameServerMachine = createMachine(
                 initial: 'Idle',
                 states: {
                   Idle: {
-                    description:
-                      'Addd some random text to make this node as big as possible so there is more room for transitions!',
                     on: {
-                      // PLAY_FACEDOWN_RUNE: {},
+                      // SET_RUNE: {},
                       // ENCHANT_RUNE: {},
                       // USE_CARD_ABILITY: {},
                       // CHANGE_ELESTRAL_POSITION: {},
@@ -246,17 +290,27 @@ export const gameServerMachine = createMachine(
               },
             },
             on: {
-              // END_TURN: {
-              //   target: 'End Phase',
-              // },
+              END_TURN: {
+                target: 'End Phase',
+                cond: 'from active player',
+              },
               // ATTACK: {
               //   cond: 'attack position elestral on current player field',
               //   target: 'Battle Phase',
               // },
             },
           },
-          'Battle Phase': {},
-          'End Phase': {},
+          'Battle Phase': {
+            // entry: ['syncPlayerState', 'sendBattlePhaseEvent'],
+          },
+          'End Phase': {
+            entry: ['syncPlayerState', 'sendEndPhaseEvent'],
+            // TODO: Run any cleanup, execute end phase effects, etc.
+            always: 'Turn Complete',
+          },
+          'Turn Complete': {
+            type: 'final',
+          },
         },
       },
       'Game Round Over': {
@@ -316,16 +370,12 @@ export const gameServerMachine = createMachine(
           data: undefined,
         })
       },
-      setCurrentPlayerToDiceRollWinner: assign((_, e) => {
-        return {
-          currentPlayerId: e.data.winner,
-        }
-      }),
-      setCurrentPlayerToStartingPlayer: assign((_, e) => {
-        return {
-          currentPlayerId: e.startingPlayer,
-        }
-      }),
+      setCurrentPlayerToDiceRollWinner: (c, e) => {
+        c.gameState.setActivePlayer(e.data.winner)
+      },
+      setCurrentPlayerToStartingPlayer: (c, e) => {
+        c.gameState.setActivePlayer(e.startingPlayer)
+      },
       sendPlayerDiceRollResults: (c, e) => {
         sendToAllPlayers(c, {
           type: 'DICE_ROLL_RESULT',
@@ -342,7 +392,11 @@ export const gameServerMachine = createMachine(
       },
       initGameState: assign((c) => {
         return {
-          gameState: initGameState([...c.players.values()], INITIAL_HAND_SIZE),
+          gameState: initGameState(
+            c.gameState.turnState.activePlayerId,
+            [...c.players.values()],
+            INITIAL_HAND_SIZE
+          ),
         }
       }),
       markPlayerAsReady: (c, e) => {
@@ -370,6 +424,73 @@ export const gameServerMachine = createMachine(
           outReason: 'spirit out',
         })
       },
+      markPlayerAsDeckOut: (c, _e) => {
+        const player = c.gameState.turnState.activePlayerId
+
+        c.gameState.set(player, {
+          ...c.gameState.get(player)!,
+          status: 'out',
+          outReason: 'deck out',
+        })
+      },
+      sendMainPhaseEvent: (c, _e) => {
+        sendToAllPlayers(c, {
+          type: 'MAIN_PHASE',
+          data: undefined,
+        })
+      },
+      // sendBattlePhaseEvent: (c, _e) => {
+      //   sendToAllPlayers(c, {
+      //     type: 'BATTLE_PHASE',
+      //     data: undefined,
+      //   })
+      // },
+      raiseDeckOutEvent: send({
+        type: 'DECK_OUT',
+      }),
+      sendEndPhaseEvent: (c, _e) => {
+        sendToAllPlayers(c, {
+          type: 'END_PHASE',
+          data: undefined,
+        })
+      },
+      advanceActivePlayer: (c, _e) => {
+        const players = [...c.players.values()]
+
+        let nextPlayerIndex =
+          players.findIndex(
+            (p) => p.id === c.gameState.turnState.activePlayerId
+          ) + 1
+
+        if (nextPlayerIndex >= players.length) {
+          nextPlayerIndex = 0
+        }
+
+        while (
+          c.gameState.get(players[nextPlayerIndex]!.id)!.status !== 'ready'
+        ) {
+          nextPlayerIndex++
+
+          if (nextPlayerIndex >= players.length) {
+            nextPlayerIndex = 0
+          }
+        }
+
+        c.gameState.setActivePlayer(players[nextPlayerIndex]!.id)
+      },
+      sendNextPlayerTurnEvent: (c, _e) => {
+        sendToAllPlayers(c, {
+          type: 'NEXT_PLAYER_TURN',
+          data: {
+            nextActivePlayer: c.gameState.turnState.activePlayerId,
+          },
+        })
+      },
+      drawCardForActivePlayer: (c, _e) => {
+        drawCards(c.gameState.activePlayerState, {
+          amount: 1,
+        })
+      },
       syncPlayerState: (c) => {
         sendToAllPlayers(c, (playerId, gameState) => {
           const player = gameState.get(playerId)!
@@ -383,15 +504,21 @@ export const gameServerMachine = createMachine(
             }
 
             opponentState[opponentId] = {
+              status: opponent.status,
+              mainDeckCount: opponent.mainDeck.length,
               spiritCount: opponent.spiritDeck.length,
               handCount: opponent.hand.length,
               field: opponent.field,
+              outReason: opponent.status === 'out' ? opponent.outReason : null,
             }
           }
 
           return {
             type: 'SYNC_STATE',
             data: {
+              status: player.status,
+              outReason: player.status === 'out' ? player.outReason : null,
+              turnState: gameState.turnState,
               mainDeckCount: player.mainDeck.length,
               spiritDeck: player.spiritDeck,
               hand: player.hand,
@@ -424,11 +551,34 @@ export const gameServerMachine = createMachine(
 
         return player?.status === 'connected'
       },
-      'from current player and is elestral': (c, e) => {
-        return fromCurrentPlayer(c, e)
+      'can normal enchant elestral': (c, e) => {
+        const player = c.gameState.get(e.from)!
+        const card = player.hand[e.cardIndex]
+
+        if (!fromActivePlayer(c, e)) {
+          console.error('Event not from active player')
+          return false
+        }
+
+        if (card === undefined) {
+          console.error("Tried to play a card that doesn't exist")
+          return false
+        }
+
+        if (card.class !== 'elestral') {
+          console.error('Tried to play a non-elestral card')
+          return false
+        }
+
+        if (player.field.elestrals[e.elestralFieldIndex] !== null) {
+          console.error('Elestral field slot in use')
+          return false
+        }
+
+        return true
       },
-      'from current player': (c, e) => {
-        return fromCurrentPlayer(c, e)
+      'from active player': (c, e) => {
+        return fromActivePlayer(c, e)
       },
       'enough connected players': (c) => {
         const requiredNumberOfPlayers = 2
@@ -452,6 +602,9 @@ export const gameServerMachine = createMachine(
           [...c.gameState.values()].filter((player) => player.status !== 'out')
             .length === 1
         )
+      },
+      'no cards remaining for active player': (c, _e) => {
+        return c.gameState.activePlayerState.mainDeck.length <= 0
       },
     },
     services: {
@@ -494,29 +647,29 @@ export const gameServerMachine = createMachine(
           winner: topRoll[0],
         }
       },
-      normalEnchantElestral: async (c, e) => {
-        const player = c.gameState.get(e.from)!
-        const card = player.hand[e.cardIndex]
+      // normalEnchantElestral: async (c, e) => {
+      //   const player = c.gameState.get(e.from)!
+      //   const card = player.hand[e.cardIndex]
 
-        if (card === undefined) {
-          throw new Error('Invalid card index for current hand')
-        }
-        if (card.class !== 'elestral') {
-          throw new Error(
-            'Tried to normal enchant a non-Elestral to an Elestral slot'
-          )
-        }
+      //   if (card === undefined) {
+      //     throw new Error('Invalid card index for current hand')
+      //   }
+      //   if (card.class !== 'elestral') {
+      //     throw new Error(
+      //       'Tried to normal enchant a non-Elestral to an Elestral slot'
+      //     )
+      //   }
 
-        if (player.field.elestrals[e.elestralFieldIndex] !== null) {
-          throw new Error('Already an elestral in that slot')
-        }
+      //   if (player.field.elestrals[e.elestralFieldIndex] !== null) {
+      //     throw new Error('Already an elestral in that slot')
+      //   }
 
-        player.field.elestrals[e.elestralFieldIndex] = {
-          card,
-          position: e.position,
-          spirits: player.spiritDeck.splice(e.spiritCardIndex, 1),
-        }
-      },
+      //   player.field.elestrals[e.elestralFieldIndex] = {
+      //     card,
+      //     position: e.position,
+      //     spirits: player.spiritDeck.splice(e.spiritCardIndex, 1),
+      //   }
+      // },
     },
   }
 )
@@ -528,11 +681,11 @@ export type GameServerService = InterpreterFrom<typeof gameServerMachine>
 // Guard Helpers (FIXME: Turn into real guards with xstate v5)
 //////
 
-function fromCurrentPlayer(
+function fromActivePlayer(
   c: GameServerContext,
-  e: RecievedPlayerEvent
+  e: RecievedPlayerEventWithFrom
 ): boolean {
-  return c.currentPlayerId === e.from
+  return c.gameState.turnState.activePlayerId === e.from
 }
 
 // Send Helpers
@@ -567,10 +720,9 @@ export function newGameServerMachine(playerData: PlayerData) {
 
   return interpret(
     gameServerMachine.withContext({
-      currentPlayerId: '' as any,
       players,
       // Will be properly set once the game starts
-      gameState: new Map() as GameState,
+      gameState: new GameState('' as PlayerId),
     })
   ).start()
 }

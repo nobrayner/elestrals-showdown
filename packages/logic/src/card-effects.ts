@@ -1,4 +1,5 @@
 import type { PlayerState } from './types'
+import type { Card, SpiritCard } from '@elestrals-showdown/schemas'
 
 import { shuffleCards } from './deck-utils'
 
@@ -27,7 +28,24 @@ export function expendSpirits(
   player: PlayerState,
   { spiritDeckIndicesToExpend }: { spiritDeckIndicesToExpend: number[] }
 ): PlayerState {
-  player.spiritDeck = player.spiritDeck.filter((_, i) => !spiritDeckIndicesToExpend.includes(i))
+  const { expendedSpirits, remainingSpirits } = player.spiritDeck.reduce(
+    (acc, card, i) => {
+      if (spiritDeckIndicesToExpend.includes(i)) {
+        acc.expendedSpirits.push(card)
+      } else {
+        acc.remainingSpirits.push(card)
+      }
+
+      return acc
+    },
+    { expendedSpirits: [], remainingSpirits: [] } as {
+      expendedSpirits: Card[]
+      remainingSpirits: SpiritCard[]
+    }
+  )
+
+  player.spiritDeck = remainingSpirits
+  player.field.underworld.push(...expendedSpirits)
 
   return player
 }

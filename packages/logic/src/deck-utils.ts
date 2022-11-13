@@ -6,7 +6,7 @@ import type {
   SpiritCard,
 } from '@elestrals-showdown/schemas'
 
-import PrototypeCardList from '@elestrals-showdown/card-data/cards/en/proto.json'
+import BaseSetCardList from '@elestrals-showdown/card-data/cards/en/base.json'
 import { Result, ok, err } from 'neverthrow'
 
 type DeckFromDeckListErrorCode = 'INVALID_CARD'
@@ -38,12 +38,13 @@ export function cardDataFromCardList(
   const cards: Card[] = []
 
   for (const cardId in list) {
-    const cardData = PrototypeCardList.find((card) => card.id === cardId)
+    const cardData = BaseSetCardList.find((card) => card.id === cardId)
 
     if (!cardData) {
       return err(new DeckFromDeckListError('INVALID_CARD', cardId))
     }
 
+    // TODO: Limit decks to only 3 of a card
     cards.push(...new Array(list[cardId]).fill(cardData))
   }
 

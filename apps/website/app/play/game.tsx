@@ -28,6 +28,14 @@ const STATE_COMPONENT_MAPPING: {
       selector: 'Deciding Starting Player',
       component: DecidingStartingPlayer,
     },
+    {
+      selector: 'Mulligan Check',
+      component: MulliganCheck,
+    },
+    {
+      selector: 'Game Round Over',
+      component: GameRoundOver,
+    },
   ]
 
 export function Game({ roomId, playerId }: GameProps) {
@@ -112,15 +120,13 @@ function DecidingStartingPlayer({ state, send, playerId }: GameChildProps) {
   )
 }
 
-function InPlay({ state: parentState }: GameChildProps) {
-  const [state, send] = useActor(
-    parentState.children.gameRound as GameRoundActor
-  )
+function MulliganCheck({ state, send }: GameChildProps) {
   const gameState = state.context.gameState
 
   return (
     <div>
-      <pre>Game Round State: {JSON.stringify(state.value)}</pre>
+      <p>Spirit Count:</p>
+      <pre>{gameState.spiritDeck.length}</pre>
       <p>Hand:</p>
       <pre>{JSON.stringify(gameState.hand.map((c) => c.name))}</pre>
       {state.matches('Mulligan Check.Checking') && (
@@ -130,8 +136,41 @@ function InPlay({ state: parentState }: GameChildProps) {
         </div>
       )}
       {state.matches('Mulligan Check.Choosing Spirits') && (
-        <MulliganSelection state={state} send={send} />
+        <CardSelector
+          title="Spirits for Mulligan"
+          selectionActor={state.children.mulliganSelection as SelectionActor}
+        />
       )}
+      <br />
+      <p>Opponents:</p>
+      {Object.entries(gameState.opponents).map(([pid, pState]) => {
+        return (
+          <div key={pid}>
+            <p>{pid}:</p>
+            <pre>{JSON.stringify(pState, null, 4)}</pre>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function InPlay({ state: parentState }: GameChildProps) {
+  const [state, send] = useActor(
+    parentState.children.gameRound as GameRoundActor
+  )
+  const gameState = state.context.gameState
+
+  return (
+    <div>
+      <pre>Game Round State: {JSON.stringify(state.value)}</pre>
+      <p>Spirit Count:</p>
+      <pre>{gameState.spiritDeck.length}</pre>
+      <p>Deck Count:</p>
+      <pre>{gameState.mainDeckCount}</pre>
+      <p>Hand:</p>
+      <pre>{JSON.stringify(gameState.hand.map((c) => c.name))}</pre>
+      <Actions state={state} send={send} />
       <p>Stadium:</p>
       <pre>{JSON.stringify(gameState.field.stadium)}</pre>
       <p>Elestrals:</p>
@@ -163,9 +202,23 @@ type InPlayChildProps = {
   send: GameRoundActor['send']
 }
 
-function MulliganSelection({ state: parentState }: InPlayChildProps) {
-  return <CardSelector
-    title="Spirits for Mulligan"
-    selectionActor={parentState.children.mulliganSelection as SelectionActor}
-  />
+function Actions({ state, send }: InPlayChildProps) {
+  return (
+    <>
+      <p>Actions:</p>
+      {state.matches('My Turn.Main Phase') && (
+        <button onClick={() => send({ type: 'END_TURN' })}>End Turn</button>
+      )}
+    </>
+  )
+}
+
+function GameRoundOver({ state }: GameChildProps) {
+  return (
+    <p>
+      {state.context.gameState.status === 'out'
+        ? `You lost by ${state.context.gameState.outReason}...`
+        : 'You won!'}
+    </p>
+  )
 }

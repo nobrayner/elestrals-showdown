@@ -1,26 +1,20 @@
 import type {
+  PlayerId,
   PlayerStateSyncPayload as GameState,
   SentPlayerEvent as ServerEvent,
+  RecievedPlayerEvent as SendToServerEvent,
 } from '@elestrals-showdown/logic'
-import type { SelectionResultEvent } from './selection.machine'
 
 import { createMachine, assign, ActorRefFrom, StateFrom } from 'xstate'
-import {
-  createSelectionInvokeData,
-  selectionMachine,
-} from './selection.machine'
 
-export type SendToServer = (e: { type: string;[key: string]: any }) => void
+export type SendToServer = (e: SendToServerEvent) => void
 
-type GameRoundEvent =
-  | { type: 'KEEP_HAND' }
-  | { type: 'MULLIGAN' }
-  | ServerEvent
-  | SelectionResultEvent
+type GameRoundEvent = { type: 'END_TURN' } | ServerEvent
 
 type GameRoundContext = {
   sendToServer: SendToServer
   gameState: GameState
+  playerId: PlayerId
 }
 
 export const gameRoundMachine = createMachine(
@@ -33,81 +27,141 @@ export const gameRoundMachine = createMachine(
       events: {} as GameRoundEvent,
     },
     // Actual Machine
-    initial: 'Mulligan Check',
+    initial: 'Init',
     states: {
-      'Mulligan Check': {
-        initial: 'Checking',
+      Init: {
+        always: [
+          {
+            target: 'My Turn.Main Phase',
+            cond: 'active player is me and I start',
+          },
+          {
+            target: 'My Turn.Draw Phase',
+            cond: 'active player is me',
+          },
+          {
+            target: 'Opponents Turn',
+          },
+        ],
+      },
+      'My Turn': {
+        initial: 'Draw Phase',
         states: {
-          Checking: {
+          'Draw Phase': {
             on: {
-              KEEP_HAND: {
-                target: 'Waiting',
-                actions: ['sendNoMulliganEvent'],
-              },
-              MULLIGAN: {
-                target: 'Choosing Spirits',
+              MAIN_PHASE: {
+                target: 'Main Phase',
               },
             },
           },
-          Waiting: {
+          'Main Phase': {
             on: {
-              GAME_ROUND_START: {
-                target: '#Game Round Machine.Game Round',
+              END_TURN: {
+                actions: ['sendEndTurnEvent'],
+              },
+              BATTLE_PHASE: {
+                target: 'Battle Phase',
+              },
+              END_PHASE: {
+                target: 'End Phase',
               },
             },
           },
-          'Choosing Spirits': {
-            invoke: {
-              id: 'mulliganSelection',
-              src: 'mulliganSelection',
-              data: (c) => {
-                return createSelectionInvokeData({
-                  cards: c.gameState.spiritDeck,
-                  amount: 2,
-                })
-              },
-            },
+          'Battle Phase': {
             on: {
-              SELECTION_CONFIRMED: {
-                target: 'Checking',
-                actions: ['sendMulliganEvent'],
+              END_TURN: {
+                actions: ['sendEndTurnEvent'],
               },
-              SELECTION_CANCELLED: {
-                target: 'Checking',
+              END_PHASE: {
+                target: 'End Phase',
               },
             },
           },
+          'End Phase': {},
         },
         on: {
-          SYNC_STATE: {
-            actions: ['updateGameState'],
+          NEXT_PLAYER_TURN: {
+            target: 'Opponents Turn',
           },
         },
       },
-      'Game Round': {},
+      'Opponents Turn': {
+        initial: 'Draw Phase',
+        states: {
+          'Draw Phase': {
+            on: {
+              MAIN_PHASE: {
+                target: 'Main Phase',
+              },
+            },
+          },
+          'Main Phase': {
+            on: {
+              BATTLE_PHASE: {
+                target: 'Battle Phase',
+              },
+              END_PHASE: {
+                target: 'End Phase',
+              },
+            },
+          },
+          'Battle Phase': {
+            on: {
+              END_PHASE: {
+                target: 'End Phase',
+              },
+            },
+          },
+          'End Phase': {},
+        },
+        on: {
+          NEXT_PLAYER_TURN: [
+            {
+              target: 'My Turn',
+              cond: 'next player is me',
+            },
+            {
+              target: 'Opponents Turn',
+            },
+          ],
+        },
+      },
+    },
+    on: {
+      SYNC_STATE: {
+        actions: ['updateGameState'],
+      },
     },
   },
   {
     actions: {
+      sendEndTurnEvent: (c, _e) => {
+        c.sendToServer({
+          type: 'END_TURN',
+        })
+      },
       updateGameState: assign((_c, e) => {
         return {
           gameState: e.data,
         }
       }),
-      sendNoMulliganEvent: ({ sendToServer }) => {
-        sendToServer({ type: 'NO_MULLIGAN' })
+    },
+    guards: {
+      'active player is me and I start': (c, _e) => {
+        const turnState = c.gameState.turnState
+        return (
+          turnState.activePlayerId === c.playerId &&
+          turnState.phase === 'Main Phase'
+        )
       },
-      sendMulliganEvent: ({ sendToServer }, e) => {
-        sendToServer({
-          type: 'MULLIGAN',
-          spiritDeckIndicesToExpend: e.selection,
-        })
+      'active player is me': (c, _e) => {
+        return c.gameState.turnState.activePlayerId === c.playerId
+      },
+      'next player is me': (c, e) => {
+        return e.data.nextActivePlayer === c.playerId
       },
     },
-    guards: {},
-    services: {
-      mulliganSelection: selectionMachine,
-    },
+    services: {},
   }
 )
 

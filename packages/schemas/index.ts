@@ -1,4 +1,6 @@
-export type SendEventFunction<T extends { type: string; data: any }> = (data: T) => void
+export type SendEventFunction<T extends { type: string; data: any }> = (
+  data: T
+) => void
 
 export type Element =
   | 'rainbow' // Equivalent to colorless energy in Pokemon TCG
@@ -29,19 +31,22 @@ export type RuneSubclass =
   | 'artifact'
   | 'stadium'
 
+export type Rarity =
+  | 'common'
+  | 'uncommon'
+  | 'rare'
+  | 'holo_rare'
+  | 'full_art'
+  | 'alt_art'
 
 export type CardSubclasses = {
-  'spirit': ElestralSubclass
-  'elestral': ElestralSubclass
-  'rune': RuneSubclass
+  spirit: ElestralSubclass
+  elestral: ElestralSubclass
+  rune: RuneSubclass
 }
 export type CardClass = {
   [K in keyof CardSubclasses]: K
 }[keyof CardSubclasses]
-
-export type CardEffect = {
-  text: string
-}
 
 type CardBase<T extends keyof CardSubclasses> = {
   id: string
@@ -51,6 +56,8 @@ type CardBase<T extends keyof CardSubclasses> = {
   }
   class: T
   subclasses: CardSubclasses[T]
+  rarity: Rarity
+  artist: string
 }
 
 export type SpiritCard = CardBase<'spirit'> & {
@@ -90,3 +97,31 @@ export type Deck = {
   spirit: SpiritCard[]
   sideboard: Card[]
 }
+
+export type CardEffect = {
+  text: string
+  // This isn't really accurate... But you know :shrug:
+  effect: MoveCardsEffect
+}
+
+type MoveCardsEffect = {
+  type: 'move cards effect'
+  from: ZoneIdentifier
+  to: ZoneIdentifier
+  cards: any
+}
+
+type ZoneIdentifier = {
+  type: 'zone identifier'
+  zone: ZoneLiteral
+  owner: string
+}
+
+type ZoneLiteral =
+  | 'stadium'
+  | 'elestral'
+  | 'rune'
+  | 'underworld'
+  | 'spirit deck'
+  | 'main deck'
+  | 'hand'

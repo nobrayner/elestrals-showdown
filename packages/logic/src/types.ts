@@ -21,12 +21,13 @@ type RuneSlot = {
 export type PlayerId = string & { __type: 'playerid' }
 
 export type PlayerField = {
+  stadium: RuneSlot
   elestrals: [ElestralSlot, ElestralSlot, ElestralSlot, ElestralSlot]
   runes: [RuneSlot, RuneSlot, RuneSlot, RuneSlot]
-  stadium: RuneSlot
   underworld: Card[]
 }
 
+type OutReason = 'deck out' | 'spirit out'
 export type PlayerState = {
   mainDeck: ElestralOrRuneCard[]
   spiritDeck: SpiritCard[]
@@ -38,11 +39,25 @@ export type PlayerState = {
     }
     | {
       status: 'out'
-      outReason: 'deck out' | 'spirit out'
+      outReason: OutReason
     }
   )
 
+export type TurnPhase =
+  | 'Draw Phase'
+  | 'Main Phase'
+  | 'Battle Phase'
+  | 'End Phase'
+
+export type TurnState = {
+  activePlayerId: PlayerId
+  phase: TurnPhase
+}
+
 export type PlayerStateSyncPayload = {
+  status: PlayerState['status']
+  outReason: OutReason | null
+  turnState: TurnState
   mainDeckCount: number
   spiritDeck: SpiritCard[]
   hand: ElestralOrRuneCard[]
@@ -50,11 +65,12 @@ export type PlayerStateSyncPayload = {
   opponents: Record<
     PlayerId,
     {
+      status: PlayerState['status']
+      outReason: OutReason | null
       field: PlayerField
       handCount: number
       spiritCount: number
+      mainDeckCount: number
     }
   >
 }
-
-export type GameState = Map<PlayerId, PlayerState>

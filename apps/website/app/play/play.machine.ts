@@ -1,16 +1,19 @@
 import type {
   PlayerStateSyncPayload as GameState,
   SentPlayerEvent as ServerEvent,
+  PlayerId,
 } from '@elestrals-showdown/logic'
-import { gameRoundMachine, SendToServer } from './game-round.machine'
+import type { SendToServer } from './game-round.machine'
+import type { StateFrom, ActorRefFrom, StateValueFrom } from 'xstate'
 
+import { createMachine, assign } from 'xstate'
+
+import { gameRoundMachine } from './game-round.machine'
 import {
-  createMachine,
-  assign,
-  StateFrom,
-  ActorRefFrom,
-  StateValueFrom,
-} from 'xstate'
+  createSelectionInvokeData,
+  selectionMachine,
+} from './selection.machine'
+import type { SelectionResultEvent } from './selection.machine'
 
 type PlayContext = {
   roomId: string
@@ -18,12 +21,17 @@ type PlayContext = {
   sendToServer: SendToServer
   opponents: string[]
   diceRolls: Record<string, number>
+  gameState: GameState
 }
 
 type PlayEvent =
   | { type: 'CONNECTED'; sendToServer: SendToServer }
-  | { type: 'PLAYER_CHOSEN'; playerId: string }
+  | { type: 'PLAYER_CHOSEN'; playerId: PlayerId }
+  | { type: 'KEEP_HAND' }
+  | { type: 'MULLIGAN' }
+  | { type: 'DISCONNECTED' }
   | ServerEvent
+  | SelectionResultEvent
 
 export const playMachine = createMachine(
   {
@@ -40,6 +48,7 @@ export const playMachine = createMachine(
       sendToServer: () => { },
       opponents: [],
       diceRolls: {},
+      gameState: {} as GameState,
     },
     // Actual Machine
     initial: 'Init',
@@ -48,8 +57,11 @@ export const playMachine = createMachine(
       src: 'gameSocket',
     },
     on: {
+      SYNC_STATE: {
+        actions: ['updateGameState'],
+      },
       GAME_ROUND_OVER: {
-        target: '#Play Machine',
+        target: 'Game Round Over',
       },
     },
     states: {
@@ -96,7 +108,8 @@ export const playMachine = createMachine(
                 target: 'Choosing',
               },
               SYNC_STATE: {
-                target: '#Play Machine.In Play',
+                target: '#Play Machine.Mulligan Check',
+                actions: ['updateGameState'],
               },
             },
           },
@@ -110,20 +123,76 @@ export const playMachine = createMachine(
           },
         },
       },
+      'Mulligan Check': {
+        initial: 'Checking',
+        states: {
+          Checking: {
+            on: {
+              KEEP_HAND: {
+                target: 'Waiting',
+                actions: ['sendNoMulliganEvent'],
+              },
+              MULLIGAN: {
+                target: 'Choosing Spirits',
+              },
+            },
+          },
+          Waiting: {
+            on: {
+              GAME_ROUND_START: {
+                target: '#Play Machine.In Play',
+              },
+            },
+          },
+          'Choosing Spirits': {
+            invoke: {
+              id: 'mulliganSelection',
+              src: 'mulliganSelection',
+              data: (c) => {
+                return createSelectionInvokeData({
+                  cards: c.gameState.spiritDeck,
+                  amount: 2,
+                })
+              },
+            },
+            on: {
+              SELECTION_CONFIRMED: {
+                target: 'Checking',
+                actions: ['sendMulliganEvent'],
+              },
+              SELECTION_CANCELLED: {
+                target: 'Checking',
+              },
+            },
+          },
+        },
+        on: {
+          SYNC_STATE: {
+            actions: ['updateGameState'],
+          },
+        },
+      },
       'In Play': {
         invoke: {
           id: 'gameRound',
           src: 'gameRound',
           autoForward: true,
-          data: (c, e) => {
+          data: (c, _e) => {
             return {
               sendToServer: c.sendToServer,
-              // @ts-expect-error
-              gameState: e.data,
+              playerId: c.playerId,
+              gameState: c.gameState,
             }
           },
         },
+        on: {
+          GAME_ROUND_OVER: {
+            target: 'Game Round Over',
+          },
+        },
       },
+      'Game Round Over': {},
+      Disconnected: {},
     },
   },
   {
@@ -154,6 +223,20 @@ export const playMachine = createMachine(
           startingPlayer: e.playerId,
         })
       },
+      sendNoMulliganEvent: ({ sendToServer }) => {
+        sendToServer({ type: 'NO_MULLIGAN' })
+      },
+      sendMulliganEvent: ({ sendToServer }, e) => {
+        sendToServer({
+          type: 'MULLIGAN',
+          spiritDeckIndicesToExpend: e.selection as [number, number],
+        })
+      },
+      updateGameState: assign((_c, e) => {
+        return {
+          gameState: e.data,
+        }
+      }),
     },
     guards: {
       'is client side': () => {
@@ -163,7 +246,7 @@ export const playMachine = createMachine(
     services: {
       gameSocket: (c, _e) => (send, recieve) => {
         const ws = new WebSocket(
-          gameURLFrom(c.roomId, TESTING_DECK_LIST, c.playerId)
+          gameURLFrom(c.roomId, AMBROSIA_DECK, c.playerId)
         )
 
         recieve((event) => {
@@ -187,15 +270,14 @@ export const playMachine = createMachine(
         }
 
         ws.onclose = () => {
-          console.log('Disconnected')
-          // @ts-expect-error
-          send({ type: 'GAME_ROUND_OVER', winner: '' })
+          send({ type: 'DISCONNECTED' })
         }
 
         return () => {
           ws.close()
         }
       },
+      mulliganSelection: selectionMachine,
       gameRound: gameRoundMachine,
     },
   }
@@ -219,27 +301,37 @@ function gameURLFrom(roomId: string, deckList: any, playerId: string): URL {
 
 const TESTING_DECK_LIST = {
   main: {
-    aeolus: 3,
-    aeromare: 3,
-    ambrosia: 3,
-    ampup: 3,
-    apheros: 3,
-    astrabbit: 3,
-    atlantis: 3,
-    bagofwinds: 3,
-    blazerus: 3,
-    boombatt: 3,
-    capregal: 3,
-    carryon: 3,
-    centaurbor: 3,
-    circlethesky: 1,
+    base_006: 3,
+    base_021: 3,
+    base_042: 3,
+    base_053: 3,
+    base_054: 3,
+    base_056: 3,
+    base_068: 3,
+    base_069: 3,
+    base_078: 3,
+    base_092: 3,
+    base_097: 3,
+    base_098: 3,
+    base_102: 3,
+    base_103: 1,
   },
   spirit: {
-    zaptor: 4,
-    vipyro: 4,
-    leviaphin: 4,
-    lycarus: 4,
-    teratlas: 4,
+    base_001: 4,
+    base_002: 4,
+    base_003: 4,
+    base_004: 4,
+    base_005: 4,
+  },
+  sideboard: {},
+}
+
+const AMBROSIA_DECK = {
+  main: {
+    base_103: 6,
+  },
+  spirit: {
+    base_005: 20,
   },
   sideboard: {},
 }

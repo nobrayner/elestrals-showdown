@@ -1,0 +1,307 @@
+[
+  {
+    "id": "base_000",
+    "name": "Penterror",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F5014ea1a-490d-481d-aa52-56cb216022b0%2Fupload-1667943329755.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["dragon", "eldritch"],
+    "rarity": "full_art",
+    "artist": "Diego Monster",
+    "cost": ["wind", "wind", "wind"],
+    "attack": 15,
+    "defense": "8",
+    "effect": {
+      "text": "When this Penterror is destroyed by an opponent’s card effect you can Special Cast any number of Hydrake and Twindra from your hand or deck in Attack Position."
+    }
+  },
+  {
+    "id": "base_001",
+    "name": "Teratlas",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Fd765685a-3cdf-4daa-a2ea-058b9982e3e7%2Fupload-1667985805510.webp&w=1920&q=75"
+    },
+    "class": "spirit",
+    "subclasses": ["insectoid", "golem"],
+    "rarity": "common",
+    "artist": "Daniel Reyes",
+    "element": "earth"
+  },
+  {
+    "id": "base_002",
+    "name": "Vipyro",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Faa5f3c12-25d6-4c34-bd14-ee061f4e8164%2Fupload-1667985817741.webp&w=1920&q=75"
+    },
+    "class": "spirit",
+    "subclasses": ["dragon", "eldritch"],
+    "rarity": "common",
+    "artist": "Daniel Reyes",
+    "element": "fire"
+  },
+  {
+    "id": "base_003",
+    "name": "Leviaphin",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Fec1ab69d-b2c4-4db3-8c5b-bf9d267c46fb%2Fupload-1667985828511.webp&w=1920&q=75"
+    },
+    "class": "spirit",
+    "subclasses": ["oceanic", "ethereal"],
+    "rarity": "common",
+    "artist": "Daniel Reyes",
+    "element": "water"
+  },
+  {
+    "id": "base_004",
+    "name": "Zaptor",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Fb6f8f5d7-4580-437d-a71d-1c68da944b4a%2Fupload-1667985839724.webp&w=1920&q=75"
+    },
+    "class": "spirit",
+    "subclasses": ["archaic", "dragon"],
+    "rarity": "common",
+    "artist": "Daniel Reyes",
+    "element": "thunder"
+  },
+  {
+    "id": "base_005",
+    "name": "Lycarus",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F32dcbd78-32fd-4995-b19b-1a22d3f094d8%2Fupload-1667985850481.webp&w=1920&q=75"
+    },
+    "class": "spirit",
+    "subclasses": ["brute", "ethereal"],
+    "rarity": "common",
+    "artist": "Daniel Reyes",
+    "element": "wind"
+  },
+  {
+    "id": "base_006",
+    "name": "Drataya",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F16dc1781-8f41-404d-b5aa-79a8d54da5a7%2Fupload-1667938968367.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["dryad", "dragon"],
+    "rarity": "common",
+    "artist": "Zeta Strokes",
+    "cost": ["earth"],
+    "attack": 2,
+    "defence": 4,
+    "effect": {
+      "text": "When a player Casts Ambrosia you can draw 2 cards."
+    }
+  },
+  {
+    "id": "base_021",
+    "name": "Blazerus",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Fc61c232b-3c14-4602-873c-c9825d04ec77%2Fupload-1667940355719.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["eldritch", "behemoth"],
+    "rarity": "uncommon",
+    "artist": "Jonny De Oliveira",
+    "cost": ["fire", "fire"],
+    "attack": 8,
+    "defence": 2,
+    "effect": {
+      "text": "This Blazerus can attack twice during your Battle Phase. When this Blazerus destroys 2 Elestrals in the same Battle Phase you can Special Ascend this Blazerus to Trifernal from your hand or deck."
+    }
+  },
+  {
+    "id": "base_042",
+    "name": "Capregal",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F2a3a484a-b97b-4b80-ad4b-c54c96a74066%2Fupload-1667941165603.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["oceanic", "ethereal"],
+    "rarity": "rare",
+    "artist": "Daniel Reyes",
+    "cost": ["water", "water"],
+    "attack": 7,
+    "defence": 4,
+    "effect": {
+      "text": "When this Capregal destroys an Elestral in battle you can Special Cast an Elestral with Enchantment Cost W from your Underworld in Defense Position."
+    }
+  },
+  {
+    "id": "base_053",
+    "name": "Apheros",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F3dce92e0-1088-45e0-b86f-06ef325d96b1%2Fupload-1667941578340.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["aquatic", "ethereal"],
+    "rarity": "holo_rare",
+    "artist": "Villiam Boom",
+    "cost": ["water"],
+    "attack": 2,
+    "defence": 4,
+    "effect": {
+      "text": "You can Nexus up to WW. When you do you can draw 2 cards."
+    }
+  },
+  {
+    "id": "base_054",
+    "name": "Boombatt",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F31c5bca7-25a1-4024-8b70-5527d973e9f5%2Fupload-1667941614486.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["eldritch"],
+    "rarity": "uncommon",
+    "artist": "Luan M. Resende",
+    "cost": ["thunder"],
+    "attack": 2,
+    "defence": 1,
+    "effect": {
+      "text": "You can Disenchant T from this Boombatt in order to target and destroy an opponent’s Elestral."
+    }
+  },
+  {
+    "id": "base_056",
+    "name": "Ampup",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F9a2d236d-cb76-4053-8d7f-91369f7c5ed0%2Fupload-1667941663852.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["brute"],
+    "rarity": "common",
+    "artist": "Dragonith",
+    "cost": ["thunder"],
+    "attack": 3,
+    "defence": 3,
+    "effect": {
+      "text": "You can Expend T and discard this Ampup in order to Search your deck for up to 2 Ampup and add them to your hand."
+    }
+  },
+  {
+    "id": "base_068",
+    "name": "Astrabbit",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F8c302530-8009-41bc-aed5-0c6dedb9dbf0%2Fupload-1667942046335.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["ethereal"],
+    "rarity": "uncommon",
+    "artist": "Giovanni Aguilar",
+    "cost": ["thunder"],
+    "attack": 2,
+    "defence": 4,
+    "effect": {
+      "text": "When this Astrabbit receives 1 or more T you can look at the top 3 cards of your deck, then add 1 of them to your hand and shuffle the rest into your deck."
+    }
+  },
+  {
+    "id": "base_069",
+    "name": "Aeromare",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F83e2815e-f370-4690-8e3e-6fef4b9edc8a%2Fupload-1667942073977.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["ethereal"],
+    "rarity": "uncommon",
+    "artist": "Diego Monster",
+    "cost": ["wind"],
+    "attack": 4,
+    "defense": 5,
+    "effect": {
+      "text": "When you Ascend this Aeromare you can Cast it as an Artifact Empowering the Ascension with the effect \"The Empowered Elestral cannot be targeted or destroyed by an opponent’s Elestral effect.\""
+    }
+  },
+  {
+    "id": "base_078",
+    "name": "Carryon",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Fd5e2e68f-6757-4df0-b63a-1897095dddf3%2Fupload-1667942299686.webp&w=1920&q=75"
+    },
+    "class": "elestral",
+    "subclasses": ["insectoid", "eldritch"],
+    "rarity": "uncommon",
+    "artist": "Giovanni Aguilar",
+    "cost": ["wind"],
+    "attack": 3,
+    "defence": 3,
+    "effect": {
+      "text": "When this Carryon is Destroyed in Battle, Target the Elestral that Destroyed it and take Control of it until the End Phase."
+    }
+  },
+  {
+    "id": "base_092",
+    "name": "Atlantis",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F8b103e72-1fe7-4810-a2bb-fc8e1e6923fb%2Fupload-1667942597305.webp&w=1920&q=75"
+    },
+    "class": "rune",
+    "subclasses": ["stadium"],
+    "rarity": "common",
+    "artist": "Élite4",
+    "cost": ["water"],
+    "effect": {
+      "text": "Elestrals get +1 J and +1 O for each W Enchanting them."
+    }
+  },
+  {
+    "id": "base_097",
+    "name": "Aeolus",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F23031a16-7cc2-4c31-96f1-7add51af1444%2Fupload-1667942699637.webp&w=1920&q=75"
+    },
+    "class": "rune",
+    "subclasses": ["divine"],
+    "rarity": "full_art",
+    "artist": "Dennis Fuhrmann",
+    "cost": ["wind"],
+    "effect": {
+      "text": "When you Cast this Aeolus you can Enchant up to AAAA to it. You can Disenchant AA from this Aeolus in order to Search your deck for an Elestral with Enchantment Cost A and add it to your hand."
+    }
+  },
+  {
+    "id": "base_098",
+    "name": "Bag of Winds",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Fca575955-c727-4732-8c9d-e7d76b10df08%2Fupload-1667942713949.webp&w=1920&q=75"
+    },
+    "class": "rune",
+    "subclasses": ["artifact"],
+    "rarity": "uncommon",
+    "artist": "Jonny De Oliveira",
+    "cost": ["wind", "wind"],
+    "effect": {
+      "text": "The Empowered Elestral gets +2 O and cannot be targeted by an opponent’s Rune. When Aeolus is Enchanted and the Empowered Elestral destroys an Elestral in battle you can target and destroy a Rune."
+    }
+  },
+  {
+    "id": "base_102",
+    "name": "Circle the Sky",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2Ff653c2ea-2c4c-41ed-9a3b-0c76d2ed4639%2Fupload-1667942791680.webp&w=1920&q=75"
+    },
+    "class": "rune",
+    "subclasses": ["invoke"],
+    "rarity": "holo_rare",
+    "artist": "Giovanni Aguilar",
+    "cost": ["rainbow"],
+    "effect": {
+      "text": "Nexus up to XX. If you do you can draw a card."
+    }
+  },
+  {
+    "id": "base_103",
+    "name": "Ambrosia",
+    "images": {
+      "default": "https://www.elestrals.com/_next/image?url=https%3A%2F%2Fcdn-next.cereal.app%2Fpost%2F54e324a7-c73d-4afd-ba3b-0f0bc1421ef6%2Fupload-1667942803467.webp&w=1920&q=75"
+    },
+    "class": "rune",
+    "subclasses": ["invoke"],
+    "rarity": "holo_rare",
+    "artist": "Daniel Reyes",
+    "cost": ["rainbow"],
+    "effect": {
+      "text": "Return up to XXX from your Underworld to your Spirit Deck."
+    }
+  }
+]

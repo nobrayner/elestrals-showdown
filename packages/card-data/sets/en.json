@@ -1,13 +1,13 @@
 [
   {
-    "id": "proto",
-    "name": "Prototype Set",
-    "printedTotal": 87,
-    "total": 87,
-    "code": "PRO",
+    "id": "base",
+    "name": "Base Set",
+    "printedTotal": 126,
+    "total": 125,
+    "code": "BASE",
     "releaseDate": "2022",
     "images": {
-      "symbol": "https://static.wikia.nocookie.net/the-elestrals-archives/images/5/56/PrototypeSML.png/revision/latest?cb=20220906183222"
+      "symbol": "https://www.elestrals.com/elestrals/images/sets/base-set.png"
     }
   }
 ]
