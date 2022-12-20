@@ -1,23 +1,22 @@
-import type { Card } from '@elestrals-showdown/schemas'
 import type { SelectionActor } from 'app/play/selection.machine'
 
 import { useActor } from '@xstate/react'
 
-type CardSelectorProps = {
-  selectionActor: SelectionActor
-  title?: React.ReactNode
-  renderCard?: (
-    card: Card,
+type SelectorProps<T> = {
+  selectionActor: SelectionActor<T>
+  renderItem: (
+    item: T,
     index: number,
     onClick: React.MouseEventHandler
   ) => React.ReactNode
+  title?: React.ReactNode
 }
 
-export function CardSelector({
+export function Selector<T>({
   selectionActor,
   title,
-  renderCard = defaultCardRender,
-}: CardSelectorProps) {
+  renderItem,
+}: SelectorProps<T>) {
   const [state, send] = useActor(selectionActor)
 
   return (
@@ -34,31 +33,19 @@ export function CardSelector({
       </p>
       <div>
         {state.context.selection.map((selectionCard, index) => {
-          return renderCard(selectionCard.card, selectionCard.index, () =>
+          return renderItem(selectionCard.item, selectionCard.index, () =>
             send({ type: 'DESELECT', index })
           )
         })}
       </div>
       <br />
       <div>
-        {state.context.cards.map((selectionCard, index) => {
-          return renderCard(selectionCard.card, selectionCard.index, () =>
+        {state.context.items.map((selectionCard, index) => {
+          return renderItem(selectionCard.item, selectionCard.index, () =>
             send({ type: 'SELECT', index })
           )
         })}
       </div>
     </div>
-  )
-}
-
-function defaultCardRender(
-  c: Card,
-  i: number,
-  onClick: React.MouseEventHandler
-) {
-  return (
-    <button key={`${c.id}-${i}`} id={`${c.id}-${i}`} onClick={onClick}>
-      {c.name}
-    </button>
   )
 }

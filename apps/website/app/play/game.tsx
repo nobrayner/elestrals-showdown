@@ -1,19 +1,24 @@
 'use client'
 
+import type { PlayerId } from '@elestrals-showdown/logic'
+
 import type { GameRoundActor, GameRoundState } from './game-round.machine'
 import type { PlayActor, PlayState, PlayStateValue } from './play.machine'
+import type {
+  CardSelectionActor,
+  CardCostSelectionActor,
+} from './selection.machine'
 
 import * as React from 'react'
 
 import { useActor, useMachine } from '@xstate/react'
 
 import { playMachine } from './play.machine'
-import { SelectionActor } from './selection.machine'
-import { CardSelector } from 'components/card-selector'
+import { Selector } from 'components/card-selector'
 
 type GameProps = {
   roomId: string
-  playerId: string
+  playerId: PlayerId
 }
 
 const STATE_COMPONENT_MAPPING: {
@@ -79,7 +84,7 @@ export function Game({ roomId, playerId }: GameProps) {
 type GameChildProps = {
   state: PlayState
   send: PlayActor['send']
-  playerId: string
+  playerId: PlayerId
 }
 
 function DecidingStartingPlayer({ state, send, playerId }: GameChildProps) {
@@ -136,9 +141,22 @@ function MulliganCheck({ state, send }: GameChildProps) {
         </div>
       )}
       {state.matches('Mulligan Check.Choosing Spirits') && (
-        <CardSelector
+        <Selector
           title="Spirits for Mulligan"
-          selectionActor={state.children.mulliganSelection as SelectionActor}
+          selectionActor={
+            state.children.mulliganSelection as CardSelectionActor
+          }
+          renderItem={(item, index, onClick) => {
+            return (
+              <button
+                key={`${item.id}-${index}`}
+                id={`${item.id}-${index}`}
+                onClick={onClick}
+              >
+                {item.name}
+              </button>
+            )
+          }}
         />
       )}
       <br />
@@ -155,41 +173,39 @@ function MulliganCheck({ state, send }: GameChildProps) {
   )
 }
 
-function InPlay({ state: parentState }: GameChildProps) {
+function InPlay({ state: parentState, playerId }: GameChildProps) {
   const [state, send] = useActor(
     parentState.children.gameRound as GameRoundActor
   )
   const gameState = state.context.gameState
+  const field = gameState.field.filter((slot) => slot.owner === playerId)
 
   return (
     <div>
-      <pre>Game Round State: {JSON.stringify(state.value)}</pre>
-      <p>Spirit Count:</p>
+      <pre style={{ display: 'block' }}>
+        Game Round State: {JSON.stringify(state.value)}
+      </pre>
+      <span>Spirit Count:</span>
       <pre>{gameState.spiritDeck.length}</pre>
-      <p>Deck Count:</p>
+      <span>Deck Count:</span>
       <pre>{gameState.mainDeckCount}</pre>
-      <p>Hand:</p>
-      <pre>{JSON.stringify(gameState.hand.map((c) => c.name))}</pre>
       <Actions state={state} send={send} />
-      <p>Stadium:</p>
-      <pre>{JSON.stringify(gameState.field.stadium)}</pre>
-      <p>Elestrals:</p>
-      <pre>
-        {JSON.stringify(gameState.field.elestrals.map((c) => c?.card.name))}
-      </pre>
-      <p>Runes:</p>
-      <pre>
-        {JSON.stringify(gameState.field.runes.map((c) => c?.card.name))}
-      </pre>
+      <p>Field:</p>
+      <pre>{JSON.stringify(field, null, 4)}</pre>
       <p>Underworld:</p>
-      <pre>{JSON.stringify(gameState.field.underworld.length)}</pre>
+      <pre>{JSON.stringify(gameState.underworld)}</pre>
       <br />
       <p>Opponents:</p>
       {Object.entries(gameState.opponents).map(([pid, pState]) => {
+        const field = gameState.field.filter((slot) => slot.owner === pid)
+        const opponent = {
+          ...pState,
+          field,
+        }
         return (
           <div key={pid}>
             <p>{pid}:</p>
-            <pre>{JSON.stringify(pState, null, 4)}</pre>
+            <pre>{JSON.stringify(opponent, null, 4)}</pre>
           </div>
         )
       })}
@@ -203,21 +219,48 @@ type InPlayChildProps = {
 }
 
 function Actions({ state, send }: InPlayChildProps) {
+  if (state.hasTag('cardSelection')) {
+    return (
+      <Selector
+        title="Select Cards"
+        selectionActor={state.children.selectCards as CardCostSelectionActor}
+        renderItem={(cost, index, onClick) => {
+          return (
+            <button key={`${cost.card.id}-${index}`} onClick={onClick}>
+              {cost.card.name}
+            </button>
+          )
+        }}
+      />
+    )
+  }
+
   return (
-    <>
+    <div>
+      <p>Hand:</p>
+      {state.context.gameState.hand.map((card, index) => {
+        return (
+          <button
+            key={`${card.id}-${index}`}
+            onClick={() => send({ type: 'CAST_RUNE_FROM_HAND', index })}
+          >
+            {card.name}
+          </button>
+        )
+      })}
       <p>Actions:</p>
       {state.matches('My Turn.Main Phase') && (
         <button onClick={() => send({ type: 'END_TURN' })}>End Turn</button>
       )}
-    </>
+    </div>
   )
 }
 
 function GameRoundOver({ state }: GameChildProps) {
   return (
     <p>
-      {state.context.gameState.status === 'out'
-        ? `You lost by ${state.context.gameState.outReason}...`
+      {state.context.gameState.status.value === 'out'
+        ? `You lost by ${state.context.gameState.status.outReason}...`
         : 'You won!'}
     </p>
   )

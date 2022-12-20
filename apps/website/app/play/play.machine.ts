@@ -1,25 +1,25 @@
 import type {
-  PlayerStateSyncPayload as GameState,
-  SentPlayerEvent as ServerEvent,
+  GameStateForPlayer as GameState,
+  GameStateEvent,
   PlayerId,
 } from '@elestrals-showdown/logic'
 import type { SendToServer } from './game-round.machine'
 import type { StateFrom, ActorRefFrom, StateValueFrom } from 'xstate'
+import type { CardSelectionResultEvent } from './selection.machine'
 
 import { createMachine, assign } from 'xstate'
 
 import { gameRoundMachine } from './game-round.machine'
 import {
-  createSelectionInvokeData,
-  selectionMachine,
+  createCardSelectionInvokeData,
+  cardSelectionMachine,
 } from './selection.machine'
-import type { SelectionResultEvent } from './selection.machine'
 
 type PlayContext = {
   roomId: string
-  playerId: string
+  playerId: PlayerId
   sendToServer: SendToServer
-  opponents: string[]
+  opponents: PlayerId[]
   diceRolls: Record<string, number>
   gameState: GameState
 }
@@ -30,8 +30,8 @@ type PlayEvent =
   | { type: 'KEEP_HAND' }
   | { type: 'MULLIGAN' }
   | { type: 'DISCONNECTED' }
-  | ServerEvent
-  | SelectionResultEvent
+  | GameStateEvent
+  | CardSelectionResultEvent
 
 export const playMachine = createMachine(
   {
@@ -43,7 +43,7 @@ export const playMachine = createMachine(
       events: {} as PlayEvent,
     },
     context: {
-      playerId: '',
+      playerId: '' as PlayerId,
       roomId: '',
       sendToServer: () => { },
       opponents: [],
@@ -149,7 +149,7 @@ export const playMachine = createMachine(
               id: 'mulliganSelection',
               src: 'mulliganSelection',
               data: (c) => {
-                return createSelectionInvokeData({
+                return createCardSelectionInvokeData({
                   cards: c.gameState.spiritDeck,
                   amount: 2,
                 })
@@ -229,7 +229,7 @@ export const playMachine = createMachine(
       sendMulliganEvent: ({ sendToServer }, e) => {
         sendToServer({
           type: 'MULLIGAN',
-          spiritDeckIndicesToExpend: e.selection as [number, number],
+          spiritDeckIndicesToExpend: e.selection.map((i) => i.index),
         })
       },
       updateGameState: assign((_c, e) => {
@@ -277,7 +277,7 @@ export const playMachine = createMachine(
           ws.close()
         }
       },
-      mulliganSelection: selectionMachine,
+      mulliganSelection: cardSelectionMachine,
       gameRound: gameRoundMachine,
     },
   }
@@ -297,33 +297,6 @@ function gameURLFrom(roomId: string, deckList: any, playerId: string): URL {
   url.searchParams.append('playerId', playerId)
 
   return url
-}
-
-const TESTING_DECK_LIST = {
-  main: {
-    base_006: 3,
-    base_021: 3,
-    base_042: 3,
-    base_053: 3,
-    base_054: 3,
-    base_056: 3,
-    base_068: 3,
-    base_069: 3,
-    base_078: 3,
-    base_092: 3,
-    base_097: 3,
-    base_098: 3,
-    base_102: 3,
-    base_103: 1,
-  },
-  spirit: {
-    base_001: 4,
-    base_002: 4,
-    base_003: 4,
-    base_004: 4,
-    base_005: 4,
-  },
-  sideboard: {},
 }
 
 const AMBROSIA_DECK = {

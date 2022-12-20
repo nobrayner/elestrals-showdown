@@ -1,4 +1,4 @@
-import type { GameServerService, PlayerData } from '@elestrals-showdown/logic'
+import type { GameServerService, PlayerMeta } from '@elestrals-showdown/logic'
 
 import { Result, ok, err } from 'neverthrow'
 
@@ -9,7 +9,7 @@ const GAMES: Map<string, GameServerService> = new Map()
 type StartGameError = 'GAME_IS_FULL'
 export function startGameOrConnect(
   roomId: string,
-  playerData: PlayerData
+  playerData: PlayerMeta
 ): Result<GameServerService, StartGameError> {
   if (!GAMES.has(roomId)) {
     const gameMachine = newGameServerMachine(playerData)

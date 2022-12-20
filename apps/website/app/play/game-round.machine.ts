@@ -1,15 +1,29 @@
 import type {
   PlayerId,
-  PlayerStateSyncPayload as GameState,
-  SentPlayerEvent as ServerEvent,
+  GameStateForPlayer as GameState,
+  GameStateEvent,
   RecievedPlayerEvent as SendToServerEvent,
 } from '@elestrals-showdown/logic'
 
-import { createMachine, assign, ActorRefFrom, StateFrom } from 'xstate'
+import type { ActorRefFrom, StateFrom } from 'xstate'
+
+import type { CardCostSelectionResultEvent } from './selection.machine'
+
+import { createMachine, assign } from 'xstate'
+
+import {
+  cardSelectionMachine,
+  createCardCastSelectionInvokeDataFromCard,
+} from './selection.machine'
 
 export type SendToServer = (e: SendToServerEvent) => void
 
-type GameRoundEvent = { type: 'END_TURN' } | ServerEvent
+type GameRoundEvent =
+  | { type: 'END_TURN' }
+  | { type: 'CAST_RUNE_FROM_HAND'; index: number }
+  | { type: 'CAST_SET_RUNE' }
+  | GameStateEvent
+  | CardCostSelectionResultEvent
 
 type GameRoundContext = {
   sendToServer: SendToServer
@@ -64,6 +78,44 @@ export const gameRoundMachine = createMachine(
               },
               END_PHASE: {
                 target: 'End Phase',
+              },
+            },
+            initial: 'Idle',
+            states: {
+              Idle: {
+                on: {
+                  CAST_RUNE_FROM_HAND: {
+                    target: 'Choosing Rune Cast Spirits',
+                  },
+                },
+              },
+              'Choosing Rune Cast Spirits': {
+                tags: ['cardSelection'],
+                invoke: {
+                  id: 'selectCards',
+                  src: 'selectCards',
+                  data: (
+                    c,
+                    e: Extract<GameRoundEvent, { type: 'CAST_RUNE_FROM_HAND' }>
+                  ) => {
+                    const card = c.gameState.hand[e.index]
+                    return createCardCastSelectionInvokeDataFromCard({
+                      card,
+                      gameState: c.gameState,
+                      playerId: c.playerId,
+                      data: e,
+                    })
+                  },
+                },
+                on: {
+                  SELECTION_CONFIRMED: {
+                    target: 'Idle',
+                    actions: ['sendCastRuneEvent'],
+                  },
+                  SELECTION_CANCELLED: {
+                    target: 'Idle',
+                  },
+                },
               },
             },
           },
@@ -140,6 +192,16 @@ export const gameRoundMachine = createMachine(
           type: 'END_TURN',
         })
       },
+      sendCastRuneEvent: (c, e) => {
+        c.sendToServer({
+          type: 'CAST_RUNE',
+          rune: {
+            from: e.data.type === 'CAST_RUNE_FROM_HAND' ? 'hand' : 'set rune',
+            index: e.data.index,
+          },
+          cost: e.selection.map((item) => item.item.source),
+        })
+      },
       updateGameState: assign((_c, e) => {
         return {
           gameState: e.data,
@@ -161,7 +223,9 @@ export const gameRoundMachine = createMachine(
         return e.data.nextActivePlayer === c.playerId
       },
     },
-    services: {},
+    services: {
+      selectCards: cardSelectionMachine,
+    },
   }
 )
 

@@ -1,34 +1,41 @@
-import type { PlayerState } from './types'
 import type { Card, SpiritCard } from '@elestrals-showdown/schemas'
+
+import type { PlayerId } from './types'
+import type { GameState } from './game-state'
 
 import { shuffleCards } from './deck-utils'
 
-export function shuffleMainDeck(player: PlayerState): PlayerState {
-  player.mainDeck = shuffleCards(player.mainDeck)
-
-  return player
+export function shuffleMainDeck(gameState: GameState, player: PlayerId) {
+  const playerState = gameState.stateFor(player)
+  playerState.mainDeck = shuffleCards(playerState.mainDeck)
 }
 
-export function shuffleHandIntoDeck(player: PlayerState): PlayerState {
-  player.mainDeck = player.mainDeck.concat(player.hand)
-  player.hand = []
+export function shuffleHandIntoDeck(gameState: GameState, player: PlayerId) {
+  const playerState = gameState.stateFor(player)
+  playerState.mainDeck = playerState.mainDeck.concat(playerState.hand)
+  playerState.hand = []
 
-  shuffleMainDeck(player)
-
-  return player
+  shuffleMainDeck(gameState, player)
 }
 
-export function drawCards(player: PlayerState, { amount = 1 }): PlayerState {
-  player.hand = player.hand.concat(player.mainDeck.splice(0, amount))
-
-  return player
+export function drawCards(
+  gameState: GameState,
+  player: PlayerId,
+  { amount = 1 }
+) {
+  const playerState = gameState.stateFor(player)
+  playerState.hand = playerState.hand.concat(
+    playerState.mainDeck.splice(0, amount)
+  )
 }
 
 export function expendSpirits(
-  player: PlayerState,
+  gameState: GameState,
+  player: PlayerId,
   { spiritDeckIndicesToExpend }: { spiritDeckIndicesToExpend: number[] }
-): PlayerState {
-  const { expendedSpirits, remainingSpirits } = player.spiritDeck.reduce(
+) {
+  const playerState = gameState.stateFor(player)
+  const { expendedSpirits, remainingSpirits } = playerState.spiritDeck.reduce(
     (acc, card, i) => {
       if (spiritDeckIndicesToExpend.includes(i)) {
         acc.expendedSpirits.push(card)
@@ -44,8 +51,6 @@ export function expendSpirits(
     }
   )
 
-  player.spiritDeck = remainingSpirits
-  player.field.underworld.push(...expendedSpirits)
-
-  return player
+  playerState.spiritDeck = remainingSpirits
+  playerState.underworld.push(...expendedSpirits)
 }

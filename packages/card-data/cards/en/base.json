@@ -301,7 +301,44 @@
     "artist": "Daniel Reyes",
     "cost": ["rainbow"],
     "effect": {
-      "text": "Return up to XXX from your Underworld to your Spirit Deck."
+      "text": "Return up to XXX from your Underworld to your Spirit Deck.",
+      "effects": [
+        {
+          "inputs": [
+            {
+              "type": "CardCriteria",
+              "zones": [
+                {
+                  "type": "Zone",
+                  "owner": {
+                    "type": "Player",
+                    "value": "caster"
+                  },
+                  "kind": "underworld"
+                }
+              ],
+              "variance": "up to",
+              "amount": 3,
+              "class": "spirit"
+            }
+          ],
+          "body": {
+            "type": "MoveCards",
+            "input": {
+              "type": "InputPlaceholder",
+              "index": 0
+            },
+            "to": {
+              "type": "Zone",
+              "owner": {
+                "type": "Player",
+                "value": "caster"
+              },
+              "kind": "spirit deck"
+            }
+          }
+        }
+      ]
     }
   }
 ]
